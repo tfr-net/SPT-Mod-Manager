@@ -1,0 +1,51 @@
+name: Release
+
+# Pushing a version tag (e.g. v0.1.0) builds the Windows exe and publishes it as a GitHub Release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Test
+        run: dotnet test SptModManager.slnx -c Release
+
+      - name: Publish Windows exe
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          dotnet publish src/SptModManager.App -c Release -r win-x64 --self-contained \
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:EnableCompressionInSingleFile=true -p:DebugType=none \
+            -p:Version="$VERSION" -o publish
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'NOTES'
+          ## Download
+
+          Grab **SptModManager.exe** below. It is a single self-contained file for Windows 10/11 (64-bit), so no
+          install and no .NET download are needed. Put it anywhere and run it, then pick your SPT folder in Settings.
+
+          Windows may show a SmartScreen warning because the exe is not code-signed. Click **More info**, then
+          **Run anyway**.
+
+          See the [README](https://github.com/${{ github.repository }}#readme) for what it does and how it works.
+          NOTES
+
+          gh release create "$GITHUB_REF_NAME" publish/SptModManager.exe \
+            --title "SPT Mod Manager $GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            --generate-notes

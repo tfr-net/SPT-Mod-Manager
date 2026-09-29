@@ -9,6 +9,11 @@
     <AssemblyName>SptModManager</AssemblyName>
     <RootNamespace>SptModManager.App</RootNamespace>
     <Version>0.1.0</Version>
+    <Product>SPT Mod Manager</Product>
+    <AssemblyTitle>SPT Mod Manager</AssemblyTitle>
+    <Company>SPT Mod Manager</Company>
+    <Description>Mod manager for Single Player Tarkov, powered by The Forge.</Description>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 

@@ -10,6 +10,14 @@ A desktop mod manager for [Single Player Tarkov](https://sp-mod.com/). Browse an
 | --- | --- |
 | ![My mods](docs/screenshots/my-mods.png) | ![SPT updates](docs/screenshots/spt-updates.png) |
 
+## Download
+
+Grab **SptModManager.exe** from the [latest release](https://github.com/tfr-net/SPT-Mod-Manager/releases/latest).
+It is a single self-contained file for Windows 10/11 (64-bit): no installer and no .NET download needed. Windows may
+show a SmartScreen warning because the exe is not code-signed; click **More info**, then **Run anyway**.
+
+New releases are published by pushing a version tag (for example `v0.2.0`), which runs the Release workflow.
+
 ## Features
 
 - **Browse The Forge**: search, filter by category, sort, only show mods that work with your SPT version, filter
@@ -42,8 +50,8 @@ A desktop mod manager for [Single Player Tarkov](https://sp-mod.com/). Browse an
 ## Requirements
 
 - An SPT 4.x install (4.1+ uses the `SPT_Runtime` folder, 4.0 the `SPT` folder; both are detected).
-- The [.NET 10 runtime](https://dotnet.microsoft.com/download/dotnet/10.0), the same one SPT 4.1 needs. Self-contained
-  builds (see below) do not need it.
+- Nothing else for the release exe. Running from source needs the
+  [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 ## Getting started
 
