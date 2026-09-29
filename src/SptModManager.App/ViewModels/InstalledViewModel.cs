@@ -77,6 +77,48 @@ public partial class InstalledViewModel(MainViewModel main) : ViewModelBase
         ApplyFilter();
         Selected = Items.FirstOrDefault(i => i.Mod.Key == selectedKey);
         UpdateSummary();
+        _ = LoadThumbnailsAsync(_all.ToList());
+    }
+
+    /// <summary>Shows each Forge mod's picture, looking up any thumbnails the Browse page has not seen yet.</summary>
+    private async Task LoadThumbnailsAsync(IReadOnlyList<InstalledModViewModel> items)
+    {
+        var missing = items
+            .Select(i => i.Mod.ForgeModId)
+            .OfType<int>()
+            .Where(id => !main.KnownThumbnails.ContainsKey(id))
+            .Distinct()
+            .ToList();
+
+        if (missing.Count > 0)
+        {
+            try
+            {
+                foreach (var mod in await main.Services.Forge.GetModsByIdsAsync(missing))
+                {
+                    main.RememberThumbnail(mod);
+                }
+
+                // Mods The Forge returned nothing for have no picture; do not ask again this session.
+                foreach (var id in missing)
+                {
+                    main.KnownThumbnails.TryAdd(id, null);
+                }
+            }
+            catch (Exception e)
+            {
+                // Pictures are decoration; the colored tiles cover for them when offline.
+                main.Log.Warn($"Could not load mod pictures: {e.Message}");
+            }
+        }
+
+        foreach (var item in items)
+        {
+            if (item.Mod.ForgeModId is { } id && main.KnownThumbnails.GetValueOrDefault(id) is { } url)
+            {
+                item.Thumbnail = await main.Services.Images.LoadAsync(url);
+            }
+        }
     }
 
     private void ApplyFilter()

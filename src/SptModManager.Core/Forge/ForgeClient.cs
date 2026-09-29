@@ -19,8 +19,10 @@ public sealed record ModSearchQuery
 
     public string? CategorySlug { get; init; }
 
-    /// <summary>Exact SPT version (e.g. "4.1.6") to only show compatible mods.</summary>
-    public string? SptVersion { get; init; }
+    /// <summary>
+    /// SPT version constraint (e.g. "&gt;=4.1.0 &lt;=4.1.6") to only show mods that support a matching SPT version.
+    /// </summary>
+    public string? SptVersionConstraint { get; init; }
 
     public bool FikaCompatibleOnly { get; init; }
 
@@ -47,8 +49,11 @@ public interface IForgeClient
 
     Task<IReadOnlyList<ForgeMod>> GetModsByIdsAsync(IEnumerable<int> modIds, CancellationToken cancellationToken = default);
 
-    /// <summary>All published versions of a mod, newest first, optionally limited to an exact SPT version.</summary>
-    Task<IReadOnlyList<ForgeModVersion>> GetModVersionsAsync(int modId, string? sptVersion = null, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// All published versions of a mod, newest first, optionally limited to versions supporting an SPT version that
+    /// matches <paramref name="sptVersionConstraint"/> (an exact version or a range such as "&gt;=4.1.0 &lt;=4.1.6").
+    /// </summary>
+    Task<IReadOnlyList<ForgeModVersion>> GetModVersionsAsync(int modId, string? sptVersionConstraint = null, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyDictionary<string, List<ForgeDependencyNode>>> ResolveDependenciesAsync(
         IEnumerable<ModVersionPair> mods,
@@ -130,9 +135,9 @@ public sealed class ForgeClient : IForgeClient
             args.Add(new("filter[category_slug]", query.CategorySlug));
         }
 
-        if (!string.IsNullOrWhiteSpace(query.SptVersion))
+        if (!string.IsNullOrWhiteSpace(query.SptVersionConstraint))
         {
-            args.Add(new("filter[spt_version]", query.SptVersion));
+            args.Add(new("filter[spt_version]", query.SptVersionConstraint));
         }
 
         if (query.FikaCompatibleOnly)
@@ -177,7 +182,7 @@ public sealed class ForgeClient : IForgeClient
         return GetModsByFilterAsync("filter[id]", distinct, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<ForgeModVersion>> GetModVersionsAsync(int modId, string? sptVersion = null, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ForgeModVersion>> GetModVersionsAsync(int modId, string? sptVersionConstraint = null, CancellationToken cancellationToken = default)
     {
         var results = new List<ForgeModVersion>();
         var page = 1;
@@ -191,9 +196,9 @@ public sealed class ForgeClient : IForgeClient
                 new("per_page", MaxPerPage.ToString()),
             };
 
-            if (!string.IsNullOrWhiteSpace(sptVersion))
+            if (!string.IsNullOrWhiteSpace(sptVersionConstraint))
             {
-                args.Add(new("filter[spt_version]", sptVersion));
+                args.Add(new("filter[spt_version]", sptVersionConstraint));
             }
 
             var envelope = await GetAsync<List<ForgeModVersion>>($"/mod/{modId}/versions", args, cancellationToken);

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SptModManager.Core.Forge;
+using SptModManager.Core.Versioning;
 
 namespace SptModManager.App.ViewModels;
 
@@ -152,7 +153,7 @@ public partial class BrowseViewModel : ViewModelBase
                 Text = SearchText,
                 CategorySlug = SelectedCategory?.Slug,
                 Sort = SelectedSort?.Sort ?? ModSort.Featured,
-                SptVersion = OnlyCompatible ? _main.SptVersion : null,
+                SptVersionConstraint = OnlyCompatible ? SptCompatibility.ForgeRangeConstraint(_main.SptVersion) : null,
                 FikaCompatibleOnly = FikaOnly,
                 Page = Page,
                 PerPage = 20,
@@ -170,7 +171,8 @@ public partial class BrowseViewModel : ViewModelBase
                 var card = new ModCardViewModel(mod, _main.SptVersion);
                 card.UpdateInstalled(_main.Manager?.FindByForgeId(mod.Id) ?? _main.Manager?.FindByGuid(mod.Guid));
                 Results.Add(card);
-                _ = card.LoadThumbnailAsync(_main.Services.Images);
+                _main.RememberThumbnail(mod);
+                _ = card.LoadThumbnailAsync(_main.Services.Images, _main.ResolveImageUrl(mod.Thumbnail));
             }
 
             Page = page.CurrentPage;

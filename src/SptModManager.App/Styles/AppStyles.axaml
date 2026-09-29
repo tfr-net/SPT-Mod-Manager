@@ -45,6 +45,19 @@
         <Setter Property="Padding" Value="18" />
     </Style>
 
+    <!-- Mod picture tiles: the gradient shows (with initials) until the mod's picture loads over it -->
+    <Style Selector="Border.tile">
+        <Setter Property="ClipToBounds" Value="True" />
+        <Setter Property="BorderBrush" Value="#33FFFFFF" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="TextBlock.initials">
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="#F7F4EE" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
     <!-- Badges -->
     <Style Selector="Border.badge">
         <Setter Property="Background" Value="#2C323A" />

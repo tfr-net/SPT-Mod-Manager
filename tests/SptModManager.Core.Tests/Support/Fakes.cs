@@ -35,16 +35,24 @@ public sealed class FakeDownloader : IFileDownloader
     }
 }
 
-/// <summary>In-memory Forge with just enough behaviour for the manager tests.</summary>
+/// <summary>
+/// In-memory Forge with just enough behaviour for the manager tests. Like the real one, a mod version only counts
+/// as supporting the published SPT versions its constraint matches.
+/// </summary>
 public sealed class FakeForge : IForgeClient
 {
     public List<ForgeMod> Mods { get; } = [];
 
+    public List<string> PublishedSptVersions { get; } = ["4.0.13", "4.1.0", "4.1.4", "4.1.5", "4.1.6"];
+
     public Dictionary<int, List<ForgeModVersion>> Versions { get; } = new();
 
+    /// <summary>Dependency trees keyed by "id:version", used for any SPT version without its own entry below.</summary>
     public Dictionary<string, List<ForgeDependencyNode>> DependencyTrees { get; } = new();
 
-    public Func<IReadOnlyList<ModVersionPair>, ForgeUpdateCheck>? UpdateHandler { get; set; }
+    public Dictionary<(string Pair, string Spt), List<ForgeDependencyNode>> DependencyTreesBySpt { get; } = new();
+
+    public Func<IReadOnlyList<ModVersionPair>, string, ForgeUpdateCheck>? UpdateHandler { get; set; }
 
     public Dictionary<(int, int), ForgeFileTree> FileTrees { get; } = new();
 
@@ -69,13 +77,16 @@ public sealed class FakeForge : IForgeClient
         return Task.FromResult<IReadOnlyList<ForgeMod>>(Mods.Where(m => set.Contains(m.Id)).ToList());
     }
 
-    public Task<IReadOnlyList<ForgeModVersion>> GetModVersionsAsync(int modId, string? sptVersion = null, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<ForgeModVersion>> GetModVersionsAsync(int modId, string? sptVersionConstraint = null, CancellationToken cancellationToken = default)
     {
-        Calls.Add($"versions:{modId}:{sptVersion}");
+        Calls.Add($"versions:{modId}:{sptVersionConstraint}");
         var versions = Versions.GetValueOrDefault(modId) ?? [];
-        if (sptVersion is not null)
+        if (sptVersionConstraint is not null)
         {
-            versions = versions.Where(v => Versioning.VersionUtil.Satisfies(sptVersion, v.SptVersionConstraint)).ToList();
+            versions = versions
+                .Where(v => PublishedSptVersions.Any(spt => Versioning.VersionUtil.Satisfies(spt, v.SptVersionConstraint)
+                                                            && Versioning.VersionUtil.Satisfies(spt, sptVersionConstraint)))
+                .ToList();
         }
 
         return Task.FromResult<IReadOnlyList<ForgeModVersion>>(versions);
@@ -86,8 +97,10 @@ public sealed class FakeForge : IForgeClient
         var result = new Dictionary<string, List<ForgeDependencyNode>>();
         foreach (var pair in mods)
         {
-            Calls.Add("deps:" + pair);
-            result[pair.ToString()] = DependencyTrees.GetValueOrDefault(pair.ToString()) ?? [];
+            Calls.Add($"deps:{pair}@{sptVersion}");
+            result[pair.ToString()] = DependencyTreesBySpt.GetValueOrDefault((pair.ToString(), sptVersion))
+                                      ?? DependencyTrees.GetValueOrDefault(pair.ToString())
+                                      ?? [];
         }
 
         return Task.FromResult<IReadOnlyDictionary<string, List<ForgeDependencyNode>>>(result);
@@ -96,15 +109,15 @@ public sealed class FakeForge : IForgeClient
     public Task<ForgeUpdateCheck> CheckUpdatesAsync(IEnumerable<ModVersionPair> installed, string sptVersion, CancellationToken cancellationToken = default)
     {
         var pairs = installed.ToList();
-        Calls.Add("updates:" + string.Join(',', pairs));
-        return Task.FromResult(UpdateHandler?.Invoke(pairs) ?? new ForgeUpdateCheck { SptVersion = sptVersion });
+        Calls.Add($"updates@{sptVersion}:" + string.Join(',', pairs));
+        return Task.FromResult(UpdateHandler?.Invoke(pairs, sptVersion) ?? new ForgeUpdateCheck { SptVersion = sptVersion });
     }
 
     public Task<ForgeFileTree?> GetFileTreeAsync(int modId, int versionId, CancellationToken cancellationToken = default) =>
         Task.FromResult(FileTrees.GetValueOrDefault((modId, versionId)));
 
     public Task<IReadOnlyList<ForgeSptVersion>> GetSptVersionsAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<ForgeSptVersion>>([]);
+        Task.FromResult<IReadOnlyList<ForgeSptVersion>>(PublishedSptVersions.Select(v => new ForgeSptVersion { Version = v }).ToList());
 
     public Task<IReadOnlyList<ForgeCategory>> GetCategoriesAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<ForgeCategory>>([]);

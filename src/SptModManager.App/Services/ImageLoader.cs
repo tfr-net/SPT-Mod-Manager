@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Avalonia.Media.Imaging;
+using Avalonia.Media;
 
 namespace SptModManager.App.Services;
 
@@ -27,7 +28,8 @@ public sealed class ImageLoader(HttpClient http)
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
             var bytes = await http.GetByteArrayAsync(url, cts.Token);
             using var stream = new MemoryStream(bytes);
-            return Bitmap.DecodeToWidth(stream, 160);
+            // Enough pixels for the largest tile (96px) on high-DPI screens.
+            return Bitmap.DecodeToWidth(stream, 256, BitmapInterpolationMode.HighQuality);
         }
         catch (Exception)
         {

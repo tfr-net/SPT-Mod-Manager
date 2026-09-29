@@ -281,7 +281,7 @@ public class ModManagerTests
         var forge = new FakeForge();
         forge.Versions[10] = [new ForgeModVersion { Id = 100, Version = "1.2.0", SptVersionConstraint = "~4.1.0" }];
         forge.Versions[30] = [new ForgeModVersion { Id = 300, Version = "5.0.0", SptVersionConstraint = "~4.1.0", Link = "https://dl/30" }];
-        forge.UpdateHandler = pairs =>
+        forge.UpdateHandler = (pairs, _) =>
         {
             var check = new ForgeUpdateCheck { SptVersion = "4.1.6" };
             foreach (var pair in pairs)
@@ -314,5 +314,105 @@ public class ModManagerTests
         Assert.Equal(ModUpdateStatus.NotOnForge, results["guid:local.only"].Status);
         Assert.Equal(ModUpdateStatus.UnknownVersion, results["forge:30"].Status);
         Assert.Equal("5.0.0", results["forge:30"].LatestVersion);
+    }
+    [Fact]
+    public async Task PlanInstallAsync_FillsDependenciesMadeForEarlierPatches()
+    {
+        using var test = new TestInstall();
+        var forge = new FakeForge();
+
+        // On 4.1.6 The Forge finds no version of the dependency; its author only tagged 4.1.5.
+        forge.DependencyTrees["1:1.0.0"] =
+        [
+            new ForgeDependencyNode { Id = 2, Guid = "com.dep.old", Name = "Old Dep", Slug = "old-dep", LatestCompatibleVersion = null },
+        ];
+        forge.DependencyTreesBySpt[("1:1.0.0", "4.1.5")] =
+        [
+            new ForgeDependencyNode
+            {
+                Id = 2, Guid = "com.dep.old", Name = "Old Dep", Slug = "old-dep",
+                LatestCompatibleVersion = new ForgeResolvedVersion { Id = 21, Version = "1.4.0", Link = "https://dl/old" },
+            },
+        ];
+
+        var manager = CreateManager(test, forge);
+        var plan = await manager.PlanInstallAsync([new ModInstallRequest(1, "Root", "1.0.0", VersionId: 10, Link: "https://dl/root")]);
+
+        Assert.Empty(plan.Problems);
+        var dependency = plan.Steps[0];
+        Assert.Equal("Old Dep", dependency.Name);
+        Assert.Equal(PlanActionKind.Install, dependency.Kind);
+        Assert.Equal("1.4.0", dependency.ToVersion);
+        Assert.Contains("deps:1:1.0.0@4.1.5", forge.Calls);
+        Assert.DoesNotContain("deps:1:1.0.0@4.1.4", forge.Calls);
+    }
+
+    [Fact]
+    public async Task CheckForUpdatesAsync_ConsidersVersionsMadeForEarlierPatches()
+    {
+        using var test = new TestInstall();
+        new InstalledModsStore(test.Detect()).Save(new InstalledModsState
+        {
+            Mods =
+            [
+                new InstalledMod { ForgeModId = 40, Name = "Tagged For 4.1.4", Version = "1.0.0", Files = ["a"] },
+                new InstalledMod { ForgeModId = 50, Name = "Update Tagged For 4.1.5", Version = "1.0.0", Files = ["b"] },
+                new InstalledMod { ForgeModId = 60, Name = "Made For 4.0", Version = "1.0.0", Files = ["c"] },
+            ],
+        });
+
+        var forge = new FakeForge
+        {
+            UpdateHandler = (pairs, spt) =>
+            {
+                var check = new ForgeUpdateCheck { SptVersion = spt };
+                foreach (var modId in pairs.Select(p => int.Parse(p.Identifier)))
+                {
+                    var current = new ForgeUpdateModRef { ModId = modId, Version = "1.0.0" };
+
+                    if (modId == 50 && spt == "4.1.5")
+                    {
+                        // A newer version exists, but its author only tagged SPT 4.1.5.
+                        check.Updates.Add(new ForgeUpdate { CurrentVersion = current, RecommendedVersion = new ForgeResolvedVersion { Id = 51, Version = "1.1.0", Link = "https://dl/51" } });
+                    }
+                    else if (modId == 50 || (modId == 40 && spt is "4.1.4" or "4.1.0"))
+                    {
+                        check.UpToDate.Add(current);
+                    }
+                    else
+                    {
+                        // Mod 40 was only tagged for early 4.1 patches; mod 60 only for 4.0.
+                        check.IncompatibleWithSpt.Add(current);
+                    }
+                }
+
+                return check;
+            },
+        };
+
+        var manager = CreateManager(test, forge);
+        var results = await manager.CheckForUpdatesAsync();
+
+        Assert.Equal(ModUpdateStatus.UpToDate, results["forge:40"].Status);
+        Assert.Equal(ModUpdateStatus.UpdateAvailable, results["forge:50"].Status);
+        Assert.Equal("1.1.0", results["forge:50"].LatestVersion);
+        Assert.Equal(ModUpdateStatus.IncompatibleWithSpt, results["forge:60"].Status);
+        Assert.Contains(forge.Calls, c => c.StartsWith("updates@4.1.5:"));
+        Assert.DoesNotContain(forge.Calls, c => c.StartsWith("updates@4.0.13:"));
+    }
+
+    [Fact]
+    public void MergeUpdateInfo_PrefersNewestUpdateAndClearsIncompatible()
+    {
+        var update11 = new ModUpdateInfo(ModUpdateStatus.UpdateAvailable, "1.1.0");
+        var update12 = new ModUpdateInfo(ModUpdateStatus.UpdateAvailable, "1.2.0");
+        var upToDate = new ModUpdateInfo(ModUpdateStatus.UpToDate, "1.0.0");
+        var incompatible = new ModUpdateInfo(ModUpdateStatus.IncompatibleWithSpt);
+
+        Assert.Equal(update12, ModManager.MergeUpdateInfo(update11, update12));
+        Assert.Equal(update12, ModManager.MergeUpdateInfo(update12, update11));
+        Assert.Equal(update11, ModManager.MergeUpdateInfo(upToDate, update11));
+        Assert.Equal(upToDate, ModManager.MergeUpdateInfo(incompatible, upToDate));
+        Assert.Equal(upToDate, ModManager.MergeUpdateInfo(upToDate, incompatible));
     }
 }

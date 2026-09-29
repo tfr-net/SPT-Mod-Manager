@@ -1,3 +1,4 @@
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SptModManager.App.Services;
@@ -25,15 +26,17 @@ public partial class ModCardViewModel(ForgeMod mod, string? sptVersion) : ViewMo
 
     public bool IsFikaCompatible => Mod.FikaCompatibility == true;
 
-    public string Initial => string.IsNullOrEmpty(Mod.Name) ? "?" : Mod.Name[..1].ToUpperInvariant();
+    public string Initials { get; } = Avatar.Initials(mod.Name);
+
+    public IBrush PlaceholderBrush { get; } = Avatar.Brush(mod.Guid ?? mod.Name);
 
     public ForgeVersionSummary? LatestVersion => Mod.Versions?.OrderByDescending(v => VersionUtil.TryParse(v.Version)).FirstOrDefault();
 
     public string LatestVersionText => LatestVersion is { } v ? $"v{v.Version}" : string.Empty;
 
-    /// <summary>True when the newest listed version works with the installed SPT.</summary>
+    /// <summary>True when a listed version works with the installed SPT (including ones made for earlier patches).</summary>
     public bool IsCompatible => sptVersion is null
-                                || (Mod.Versions?.Any(v => VersionUtil.Satisfies(sptVersion, v.SptVersionConstraint)) ?? false);
+                                || (Mod.Versions?.Any(v => SptCompatibility.IsCompatible(sptVersion, v.SptVersionConstraint)) ?? false);
 
     public string? SptConstraint => LatestVersion?.SptVersionConstraint is { } c ? $"SPT {c}" : null;
 
@@ -50,8 +53,8 @@ public partial class ModCardViewModel(ForgeMod mod, string? sptVersion) : ViewMo
 
     public void UpdateInstalled(InstalledMod? installed) => InstalledVersion = installed is null ? null : installed.Version ?? "?";
 
-    public async Task LoadThumbnailAsync(ImageLoader images)
+    public async Task LoadThumbnailAsync(ImageLoader images, string? url)
     {
-        Thumbnail = await images.LoadAsync(Mod.Thumbnail);
+        Thumbnail = await images.LoadAsync(url);
     }
 }

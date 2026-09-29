@@ -145,7 +145,7 @@ public static class ModListService
                 continue;
             }
 
-            var compatible = await forge.GetModVersionsAsync(modId.Value, sptVersion, cancellationToken);
+            var compatible = await forge.GetModVersionsAsync(modId.Value, SptCompatibility.ForgeRangeConstraint(sptVersion) ?? sptVersion, cancellationToken);
             var pick = compatible.FirstOrDefault(v => VersionUtil.AreEquivalent(v.Version, entry.Version)) ?? compatible.FirstOrDefault();
 
             if (pick is null)

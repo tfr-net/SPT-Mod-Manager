@@ -74,14 +74,14 @@ public sealed class UiWorld : IDisposable
             Mod(101, "com.test.client", "Better Bot Brains", "NeuralFox", "Smarter, sneakier AI that flanks, peeks and actually uses cover.", 2_450_000, "Bots", true, true, "thumb1.png",
                 ("1.3.0", 1013, "~4.1.0"), ("1.2.3", 1012, "~4.1.0"), ("1.1.0", 1011, "~4.0.0")),
             Mod(102, "com.test.server", "Loot Overhaul", "CrateKeeper", "Rebalanced loot tables and container spawns across every map.", 890_000, "Loot", false, true, "thumb2.png",
-                ("2.0.1", 1021, "~4.1.0")),
-            Mod(103, "com.test.getters", "Quest Tracker", "TaskMaster", "Pin quest objectives and see what items you still need in raid.", 1_120_000, "Quality of Life", true, false, "thumb3.png",
+                ("2.0.1", 1021, "4.1.4")),
+            Mod(103, "com.test.getters", "Quest Tracker", "TaskMaster", "Pin quest objectives and see what items you still need in raid.", 1_120_000, "Quality of Life", true, false, null,
                 ("3.4.5", 1031, "~4.1.0")),
             Mod(104, "com.test.recoil", "Realistic Recoil", "Muzzle", "Weapon handling that feels heavier and more deliberate.", 640_000, "Weapons", false, true, "thumb4.png",
                 ("2.2.0", 1042, "~4.1.0"), ("2.1.0", 1041, "~4.0.0")),
             Mod(105, "com.test.weaponcore", "Weapon Core Lib", "Muzzle", "Shared library used by several weapon mods.", 1_600_000, "Libraries", false, true, "thumb5.png",
                 ("1.4.0", 1051, "~4.1.0")),
-            Mod(106, "com.test.stash", "Stash Expander", "HoarderHQ", "Bigger stash sizes for every edition.", 310_000, "Quality of Life", false, false, "thumb6.png",
+            Mod(106, "com.test.stash", "Stash Expander", "HoarderHQ", "Bigger stash sizes for every edition.", 310_000, "Quality of Life", false, false, null,
                 ("1.0.2", 1061, "~4.0.0")),
         ]);
 
@@ -96,9 +96,9 @@ public sealed class UiWorld : IDisposable
 
         Forge.Versions[104] = [Version("2.2.0", 1042, "~4.1.0", "https://dl.test/recoil-2.2.0.zip")];
 
-        Forge.UpdateHandler = pairs =>
+        Forge.UpdateHandler = (pairs, spt) =>
         {
-            var check = new ForgeUpdateCheck { SptVersion = "4.1.6" };
+            var check = new ForgeUpdateCheck { SptVersion = spt };
             foreach (var pair in pairs)
             {
                 var modId = int.Parse(pair.Identifier);
@@ -122,7 +122,7 @@ public sealed class UiWorld : IDisposable
         };
     }
 
-    private ForgeMod Mod(int id, string guid, string name, string author, string teaser, long downloads, string category, bool featured, bool fika, string thumbnail,
+    private ForgeMod Mod(int id, string guid, string name, string author, string teaser, long downloads, string category, bool featured, bool fika, string? thumbnail,
         params (string Version, int Id, string Constraint)[] versions)
     {
         Forge.Versions[id] = versions.Select(v => Version(v.Version, v.Id, v.Constraint, $"https://dl.test/{id}-{v.Version}.zip")).ToList();
@@ -140,7 +140,8 @@ public sealed class UiWorld : IDisposable
             Category = new ForgeCategory { Id = id, Name = category, Slug = category.ToLowerInvariant() },
             Featured = featured,
             FikaCompatibility = fika,
-            Thumbnail = $"https://img.test/{thumbnail}",
+            // The Forge sends an empty string for mods without a picture.
+            Thumbnail = thumbnail is null ? string.Empty : $"https://img.test/{thumbnail}",
             DetailUrl = $"https://sp-mod.com/mods/{id}",
             License = new ForgeLicense { Name = "MIT" },
             Versions = versions.Select(v => new ForgeVersionSummary { Id = v.Id, Version = v.Version, SptVersionConstraint = v.Constraint }).ToList(),

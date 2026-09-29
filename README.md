@@ -14,6 +14,12 @@ A desktop mod manager for [Single Player Tarkov](https://sp-mod.com/). Browse an
 
 - **Browse The Forge**: search, filter by category, sort, only show mods that work with your SPT version, filter
   for Fika compatibility, see versions, descriptions and dependencies before installing.
+- **Patch-level compatibility**: SPT patch releases keep mod compatibility within a minor version, so a mod made for
+  4.1.4 counts as compatible with 4.1.4, 4.1.5 and every later 4.1.x (but a mod made for 4.1.6 is not claimed to work
+  on 4.1.4). The Forge only links a mod version to the exact SPT versions its author tagged, so browsing, dependency
+  resolution and update checks all widen their lookups to earlier patches of your minor version.
+- **Mod pictures**: each mod shows its picture from The Forge in Browse and My mods. Mods without one get their own
+  colored tile with their initials.
 - **Dependency resolution**: installing a mod resolves its full dependency tree through The Forge for your exact SPT
   version. You get a plan ("install X, update Y, keep Z") to confirm before anything is touched, and problems like
   a dependency with no compatible version are called out.
@@ -73,8 +79,10 @@ The headless UI tests also save screenshots of every page. Set `SPTMM_SCREENSHOT
 | Piece | Source |
 | --- | --- |
 | Mod search, details, versions | Forge API v0: `GET /api/v0/mods`, `/mod/{id}`, `/mod/{id}/versions` |
-| Dependency trees | `GET /api/v0/mods/dependencies?mods=id:version&spt_version=x` |
-| Update checks | `GET /api/v0/mods/updates?mods=id:version,...&spt_version=x` |
+| Dependency trees | `GET /api/v0/mods/dependencies?mods=id:version&spt_version=x`, retried for earlier patches when a dependency has no version for `x` |
+| Update checks | `GET /api/v0/mods/updates?mods=id:version,...&spt_version=x`, repeated for earlier patches of the same minor and merged |
+| SPT versions | `GET /api/v0/spt/versions` (to know which earlier patches exist) |
+| Mod pictures | The `thumbnail` URL on each mod |
 | Grouping a mod's files | `GET /api/v0/mod/{id}/versions/{versionId}/file-tree` |
 | Mod downloads | The Forge download link, which redirects to the author's direct `.7z`/`.zip` |
 | SPT releases | `GET https://api.github.com/repos/SP-Tushonka/build/releases` |

@@ -1,3 +1,5 @@
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SptModManager.Core.Mods;
 
@@ -8,6 +10,13 @@ public partial class InstalledModViewModel(InstalledMod mod) : ViewModelBase
     public InstalledMod Mod { get; } = mod;
 
     public string Name => Mod.Name;
+
+    public string Initials { get; } = Avatar.Initials(mod.Name);
+
+    public IBrush PlaceholderBrush { get; } = Avatar.Brush(mod.Guid ?? mod.Name);
+
+    [ObservableProperty]
+    public partial Bitmap? Thumbnail { get; set; }
 
     public string VersionText => Mod.Version is { } v ? $"v{v}" : "unknown";
 

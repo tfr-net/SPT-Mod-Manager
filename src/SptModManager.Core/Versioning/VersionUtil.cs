@@ -3,7 +3,7 @@ using SemRange = SemanticVersioning.Range;
 
 namespace SptModManager.Core.Versioning;
 
-public static class VersionUtil
+public static partial class VersionUtil
 {
     /// <summary>
     /// Parses loosely-formatted version strings found in the wild ("v1.2", "1.2.0.0", "1.2.3-beta") into SemVer.
@@ -109,8 +109,24 @@ public static class VersionUtil
             return false;
         }
 
-        return SemRange.TryParse(constraint, loose: true, out var range) && range.IsSatisfied(parsed, includePrerelease: true);
+        return SemRange.TryParse(ToNpmRange(constraint), loose: true, out var range) && range.IsSatisfied(parsed, includePrerelease: true);
     }
+
+    /// <summary>
+    /// The Forge stores Composer-style constraints, which also allow "," for AND and a single "|" for OR. The SemVer
+    /// library speaks the npm dialect, so those separators are rewritten.
+    /// </summary>
+    internal static string ToNpmRange(string constraint)
+    {
+        var text = CommaAnd().Replace(constraint.Trim(), " ");
+        return SinglePipeOr().Replace(text, "||");
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"\s*,\s*")]
+    private static partial System.Text.RegularExpressions.Regex CommaAnd();
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"(?<!\|)\|(?!\|)")]
+    private static partial System.Text.RegularExpressions.Regex SinglePipeOr();
 
     /// <summary>
     /// "4.1.6" becomes "4.1". Returns null for unparsable input.

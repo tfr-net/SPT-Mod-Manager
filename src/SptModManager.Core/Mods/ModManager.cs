@@ -23,6 +23,7 @@ public sealed class ModManager
     private readonly string _downloadDirectory;
     private readonly InstalledModsStore _store;
     private InstalledModsState _state;
+    private (string SptVersion, IReadOnlyList<string> Patches)? _earlierPatches;
 
     public ModManager(SptInstallation install, IForgeClient forge, IFileDownloader downloader, IActivityLog log, string downloadDirectory)
     {
@@ -290,7 +291,7 @@ public sealed class ModManager
 
         var rootIds = requests.Select(r => r.ForgeModId).ToHashSet();
         var pairs = requests.Select(r => new ModVersionPair(r.ForgeModId.ToString(), r.Version)).ToList();
-        var trees = await _forge.ResolveDependenciesAsync(pairs, sptVersion, cancellationToken);
+        var trees = await ResolveDependenciesAsync(pairs, cancellationToken);
 
         foreach (var request in requests)
         {
@@ -331,6 +332,107 @@ public sealed class ModManager
         }
 
         return plan;
+    }
+
+    /// <summary>
+    /// Resolves dependency trees for the installed SPT version. The Forge only links a mod version to the SPT versions
+    /// its author named, so dependencies left without a version are filled in from lookups against earlier patches of
+    /// the same minor version, since mods made for those keep working on later patches.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<string, List<ForgeDependencyNode>>> ResolveDependenciesAsync(
+        IReadOnlyList<ModVersionPair> pairs,
+        CancellationToken cancellationToken = default)
+    {
+        var trees = await _forge.ResolveDependenciesAsync(pairs, RequireSptVersion(), cancellationToken);
+        if (!trees.Values.Any(HasUnresolved))
+        {
+            return trees;
+        }
+
+        foreach (var earlier in await GetEarlierSptPatchesAsync(cancellationToken))
+        {
+            IReadOnlyDictionary<string, List<ForgeDependencyNode>> alternative;
+            try
+            {
+                alternative = await _forge.ResolveDependenciesAsync(pairs, earlier, cancellationToken);
+            }
+            catch (ForgeApiException)
+            {
+                continue;
+            }
+
+            foreach (var (key, nodes) in trees)
+            {
+                if (alternative.TryGetValue(key, out var alternativeNodes))
+                {
+                    FillUnresolved(nodes, alternativeNodes);
+                }
+            }
+
+            if (!trees.Values.Any(HasUnresolved))
+            {
+                break;
+            }
+        }
+
+        return trees;
+    }
+
+    private static bool HasUnresolved(List<ForgeDependencyNode> nodes) =>
+        nodes.Any(n => n.LatestCompatibleVersion is null || HasUnresolved(n.Dependencies));
+
+    private static void FillUnresolved(List<ForgeDependencyNode> nodes, List<ForgeDependencyNode> alternativeTree)
+    {
+        for (var i = 0; i < nodes.Count; i++)
+        {
+            if (nodes[i].LatestCompatibleVersion is null && FindNode(alternativeTree, nodes[i].Id) is { LatestCompatibleVersion: not null } replacement)
+            {
+                nodes[i] = replacement;
+                continue;
+            }
+
+            FillUnresolved(nodes[i].Dependencies, alternativeTree);
+        }
+    }
+
+    private static ForgeDependencyNode? FindNode(List<ForgeDependencyNode> nodes, int modId)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.Id == modId)
+            {
+                return node;
+            }
+
+            if (FindNode(node.Dependencies, modId) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Earlier published patches of the installed SPT minor version, newest first (cached).</summary>
+    private async Task<IReadOnlyList<string>> GetEarlierSptPatchesAsync(CancellationToken cancellationToken)
+    {
+        var sptVersion = RequireSptVersion();
+        if (_earlierPatches is { } cached && cached.SptVersion == sptVersion)
+        {
+            return cached.Patches;
+        }
+
+        try
+        {
+            var published = await _forge.GetSptVersionsAsync(cancellationToken);
+            var patches = SptCompatibility.EarlierPatches(sptVersion, published.Select(v => v.Version));
+            _earlierPatches = (sptVersion, patches);
+            return patches;
+        }
+        catch (ForgeApiException)
+        {
+            return [];
+        }
     }
 
     private void VisitDependency(
@@ -656,7 +758,7 @@ public sealed class ModManager
                 continue;
             }
 
-            var latest = (await _forge.GetModVersionsAsync(mod.ForgeModId!.Value, sptVersion, cancellationToken)).FirstOrDefault();
+            var latest = (await _forge.GetModVersionsAsync(mod.ForgeModId!.Value, SptCompatibility.ForgeRangeConstraint(sptVersion), cancellationToken)).FirstOrDefault();
             results[mod.Key] = new ModUpdateInfo(
                 ModUpdateStatus.UnknownVersion,
                 latest?.Version,
@@ -678,7 +780,55 @@ public sealed class ModManager
             results[mod.Key] = new ModUpdateInfo(ModUpdateStatus.UnknownVersion, Reason: $"Version {mod.Version} is not listed on The Forge.");
         }
 
+        // The Forge only offers versions linked to the exact SPT version asked about, but mods made for an earlier
+        // patch of the same minor keep working. Checking earlier patches too catches those versions (and clears
+        // "incompatible" for mods that simply were not re-tagged for the newest patch).
+        var recognized = forgeMods.Where(m => results[m.Key].Status != ModUpdateStatus.UnknownVersion).ToList();
+        if (recognized.Count > 0)
+        {
+            foreach (var earlier in await GetEarlierSptPatchesAsync(cancellationToken))
+            {
+                ForgeUpdateCheck alternative;
+                try
+                {
+                    alternative = await _forge.CheckUpdatesAsync(recognized.Select(m => new ModVersionPair(m.ForgeModId!.Value.ToString(), m.Version!)), earlier, cancellationToken);
+                }
+                catch (ForgeApiException)
+                {
+                    continue;
+                }
+
+                var alternativeResults = new Dictionary<string, ModUpdateInfo>();
+                ApplyUpdateCheck(alternative, recognized, alternativeResults);
+                foreach (var (key, info) in alternativeResults)
+                {
+                    results[key] = MergeUpdateInfo(results[key], info);
+                }
+            }
+        }
+
         return results;
+    }
+
+    /// <summary>
+    /// Combines results from checks against different SPT patches: the newest available update wins, and a mod that
+    /// is fine on any patch up to the installed one is not reported as incompatible.
+    /// </summary>
+    internal static ModUpdateInfo MergeUpdateInfo(ModUpdateInfo current, ModUpdateInfo other)
+    {
+        if (other.Status == ModUpdateStatus.UpdateAvailable)
+        {
+            return current.Status == ModUpdateStatus.UpdateAvailable && VersionUtil.Compare(current.LatestVersion, other.LatestVersion) >= 0
+                ? current
+                : other;
+        }
+
+        if (current.Status == ModUpdateStatus.IncompatibleWithSpt && other.Status is ModUpdateStatus.UpToDate or ModUpdateStatus.Blocked)
+        {
+            return other;
+        }
+
+        return current;
     }
 
     private static void ApplyUpdateCheck(ForgeUpdateCheck check, List<InstalledMod> mods, Dictionary<string, ModUpdateInfo> results)

@@ -30,14 +30,14 @@
         <ScrollViewer>
             <StackPanel Margin="20,18" Spacing="14">
                 <Grid ColumnDefinitions="Auto,*">
-                    <Border Width="68" Height="68" CornerRadius="10" ClipToBounds="True" Background="#2B3038" VerticalAlignment="Top">
+                    <Border Classes="tile" Width="96" Height="96" CornerRadius="14" VerticalAlignment="Top"
+                            Background="{Binding Card.PlaceholderBrush}">
                         <Panel>
-                            <TextBlock Text="{Binding Card.Initial}" FontSize="26" FontWeight="Bold" Classes="muted"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Card.Initials}" FontSize="34" Classes="initials" />
                             <Image Source="{Binding Card.Thumbnail}" Stretch="UniformToFill" />
                         </Panel>
                     </Border>
-                    <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="3" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="1" Margin="16,0,0,0" Spacing="3" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Card.Name}" Classes="h2" TextWrapping="Wrap" />
                         <TextBlock Text="{Binding Card.Author, StringFormat='by {0}'}" Classes="muted" />
                         <TextBlock Text="{Binding Card.Downloads}" Classes="muted small" />

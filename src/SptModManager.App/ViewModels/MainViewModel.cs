@@ -83,6 +83,29 @@ public partial class MainViewModel : ViewModelBase
 
     public bool HasInstall => Installation is not null;
 
+    /// <summary>Forge thumbnail URLs by mod ID, shared by the Browse and My mods pages.</summary>
+    public Dictionary<int, string?> KnownThumbnails { get; } = new();
+
+    public void RememberThumbnail(Core.Forge.ForgeMod mod) => KnownThumbnails[mod.Id] = ResolveImageUrl(mod.Thumbnail);
+
+    /// <summary>Makes a Forge image URL absolute (it normally already is); empty means the mod has no picture.</summary>
+    public string? ResolveImageUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return null;
+        }
+
+        if (Uri.TryCreate(url, UriKind.Absolute, out var absolute) && absolute.Scheme is "http" or "https")
+        {
+            return absolute.ToString();
+        }
+
+        return Uri.TryCreate(new Uri(Services.Settings.ForgeBaseUrl.TrimEnd('/') + "/"), url.TrimStart('/'), out var combined)
+            ? combined.ToString()
+            : null;
+    }
+
     public string InstallTitle => Installation is null
         ? "No SPT folder"
         : Installation.SptVersion is { } version ? $"SPT {version}" : "SPT (unknown version)";

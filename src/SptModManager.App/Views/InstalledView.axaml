@@ -36,13 +36,20 @@
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:InstalledModViewModel">
                                 <Border Classes="item" Padding="14,10">
-                                    <Grid ColumnDefinitions="*,110,Auto,Auto">
-                                        <StackPanel Spacing="2" VerticalAlignment="Center">
+                                    <Grid ColumnDefinitions="Auto,*,110,Auto,Auto">
+                                        <Border Classes="tile" Width="40" Height="40" CornerRadius="8" Margin="0,0,12,0"
+                                                Background="{Binding PlaceholderBrush}">
+                                            <Panel>
+                                                <TextBlock Text="{Binding Initials}" FontSize="15" Classes="initials" />
+                                                <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
+                                            </Panel>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                             <TextBlock Text="{Binding Details}" Classes="small muted" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
-                                        <TextBlock Grid.Column="1" Text="{Binding VersionText}" VerticalAlignment="Center" Margin="8,0" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding VersionText}" />
-                                        <Border Grid.Column="2" Classes="badge"
+                                        <TextBlock Grid.Column="2" Text="{Binding VersionText}" VerticalAlignment="Center" Margin="8,0" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding VersionText}" />
+                                        <Border Grid.Column="3" Classes="badge"
                                                 Classes.success="{Binding IsUpToDate}"
                                                 Classes.accent="{Binding CanUpdate}"
                                                 Classes.warning="{Binding IsWarning}"
@@ -50,7 +57,7 @@
                                                 ToolTip.Tip="{Binding StatusDetail}">
                                             <TextBlock Text="{Binding StatusText}" />
                                         </Border>
-                                        <Button Grid.Column="3" Content="Update" Classes="primary small" Margin="10,0,0,0"
+                                        <Button Grid.Column="4" Content="Update" Classes="primary small" Margin="10,0,0,0"
                                                 IsVisible="{Binding CanUpdate}"
                                                 Command="{Binding #Root.((vm:InstalledViewModel)DataContext).UpdateOneCommand}"
                                                 CommandParameter="{Binding}" />
@@ -73,8 +80,19 @@
                                IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNull}}" />
                     <DockPanel IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <StackPanel DockPanel.Dock="Top" Spacing="6">
-                            <TextBlock Text="{Binding Selected.Name}" Classes="h2" TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding Selected.VersionText}" Classes="muted" />
+                            <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,4">
+                                <Border Classes="tile" Width="64" Height="64" CornerRadius="12"
+                                        Background="{Binding Selected.PlaceholderBrush}">
+                                    <Panel>
+                                        <TextBlock Text="{Binding Selected.Initials}" FontSize="22" Classes="initials" />
+                                        <Image Source="{Binding Selected.Thumbnail}" Stretch="UniformToFill" />
+                                    </Panel>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="{Binding Selected.Name}" Classes="h2" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Selected.VersionText}" Classes="muted" />
+                                </StackPanel>
+                            </Grid>
                             <TextBlock Text="{Binding Selected.StatusText}" FontWeight="SemiBold" />
                             <TextBlock Text="{Binding Selected.StatusDetail}" Classes="muted small" TextWrapping="Wrap"
                                        IsVisible="{Binding Selected.StatusDetail, Converter={x:Static ObjectConverters.IsNotNull}}" />

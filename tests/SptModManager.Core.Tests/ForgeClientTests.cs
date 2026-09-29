@@ -32,7 +32,7 @@ public class ForgeClientTests
             """;
 
         var (client, handler) = Create(json);
-        var page = await client.SearchModsAsync(new ModSearchQuery { SptVersion = "4.1.6", CategorySlug = "gameplay", FikaCompatibleOnly = true, Page = 2, Sort = ModSort.Downloads });
+        var page = await client.SearchModsAsync(new ModSearchQuery { SptVersionConstraint = ">=4.1.0 <=4.1.6", CategorySlug = "gameplay", FikaCompatibleOnly = true, Page = 2, Sort = ModSort.Downloads });
 
         var mod = Assert.Single(page.Items);
         Assert.Equal("com.example.mod", mod.Guid);
@@ -43,9 +43,9 @@ public class ForgeClientTests
         Assert.True(page.HasPrevious);
         Assert.Equal(90, page.Total);
 
-        var url = handler.Requests.Single().ToString();
+        var url = handler.Requests.Single().AbsoluteUri;
         Assert.StartsWith("https://sp-mod.com/api/v0/mods?", url);
-        Assert.Contains("filter[spt_version]=4.1.6", url);
+        Assert.Contains("filter[spt_version]=%3E%3D4.1.0%20%3C%3D4.1.6", url);
         Assert.Contains("filter[category_slug]=gameplay", url);
         Assert.Contains("filter[fika_compatibility]=true", url);
         Assert.Contains("sort=-downloads", url);

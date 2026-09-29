@@ -132,7 +132,7 @@ public partial class ModDetailsViewModel : ViewModelBase
             var spt = _main.SptVersion;
             foreach (var version in await versionsTask)
             {
-                Versions.Add(new VersionOption(version, spt is null || VersionUtil.Satisfies(spt, version.SptVersionConstraint)));
+                Versions.Add(new VersionOption(version, spt is null || SptCompatibility.IsCompatible(spt, version.SptVersionConstraint)));
             }
 
             SelectedVersion = Versions.FirstOrDefault(v => v.IsCompatible) ?? Versions.FirstOrDefault();
@@ -178,7 +178,10 @@ public partial class ModDetailsViewModel : ViewModelBase
         try
         {
             var key = $"{Mod.Id}:{option.Version.Version}";
-            var trees = await _main.Services.Forge.ResolveDependenciesAsync([new ModVersionPair(Mod.Id.ToString(), option.Version.Version)], spt, cancellationToken);
+            ModVersionPair[] pairs = [new ModVersionPair(Mod.Id.ToString(), option.Version.Version)];
+            var trees = _main.Manager is { } manager
+                ? await manager.ResolveDependenciesAsync(pairs, cancellationToken)
+                : await _main.Services.Forge.ResolveDependenciesAsync(pairs, spt, cancellationToken);
             if (cancellationToken.IsCancellationRequested)
             {
                 return;

@@ -67,8 +67,17 @@ public class MainWindowTests
         vm.SelectedNav = vm.NavItems[0];
         vm.Browse.SelectedMod = vm.Browse.Results.Single(r => r.Name == "Realistic Recoil");
         await WaitForAsync(() => vm.Browse.Details is { IsLoading: false, Dependencies.Count: > 0 });
-        await WaitForAsync(() => vm.Browse.Results.All(r => r.Thumbnail is not null));
+        await WaitForAsync(() => vm.Browse.Results.Count(r => r.Thumbnail is not null) == 4);
         Assert.Equal(6, vm.Browse.Results.Count);
+
+        // Mods without a picture get a colored tile with initials instead.
+        var questTracker = vm.Browse.Results.Single(r => r.Name == "Quest Tracker");
+        Assert.Null(questTracker.Thumbnail);
+        Assert.Equal("QT", questTracker.Initials);
+
+        // Tagged for SPT 4.1.4 only, which still works on the installed 4.1.6; 4.0 mods do not.
+        Assert.True(vm.Browse.Results.Single(r => r.Name == "Loot Overhaul").IsCompatible);
+        Assert.False(vm.Browse.Results.Single(r => r.Name == "Stash Expander").IsCompatible);
         Assert.Contains("Weapon Core Lib", vm.Browse.Details!.Dependencies[0].Text);
         Assert.True(vm.Browse.Results.Single(r => r.Name == "Better Bot Brains").IsInstalled);
         Capture(window, "browse.png");
@@ -81,6 +90,7 @@ public class MainWindowTests
         Assert.Contains(vm.Installed.Items, i => i.Name == "Quest Tracker" && i.IsUpToDate);
         Assert.Contains(vm.Installed.Items, i => i.Name == "HelperLib" && i.IsUnrecognized);
         vm.Installed.Selected = vm.Installed.Items.First(i => i.Name == "Better Bot Brains");
+        await WaitForAsync(() => vm.Installed.Items.Count(i => i.Thumbnail is not null) == 2);
         Capture(window, "my-mods.png");
 
         // SPT updates: a patch release for the same client build can be applied.
