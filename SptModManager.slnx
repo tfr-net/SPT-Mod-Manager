@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SptModManager.App/SptModManager.App.csproj" />
+    <Project Path="src/SptModManager.Core/SptModManager.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SptModManager.Core.Tests/SptModManager.Core.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Fixtures/">
+    <Project Path="tests/Fixtures/FakeClientPlugin/FakeClientPlugin.csproj" />
+    <Project Path="tests/Fixtures/FakeServerMod/FakeServerMod.csproj" />
+    <Project Path="tests/Fixtures/FakeServerModGetters/FakeServerModGetters.csproj" />
+    <Project Path="tests/Fixtures/FakeSptServerCore/FakeSptServerCore.csproj" />
+  </Folder>
+</Solution>
