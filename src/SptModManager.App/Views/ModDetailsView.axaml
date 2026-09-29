@@ -1,0 +1,82 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SptModManager.App.ViewModels"
+             x:Class="SptModManager.App.Views.ModDetailsView"
+             x:DataType="vm:ModDetailsViewModel">
+
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Padding="16,14" Background="{StaticResource SurfaceAltBrush}"
+                BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="0,1,0,0">
+            <StackPanel Spacing="10">
+                <ComboBox ItemsSource="{Binding Versions}" SelectedItem="{Binding SelectedVersion}" HorizontalAlignment="Stretch"
+                          PlaceholderText="Loading versions...">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:VersionOption">
+                            <StackPanel Spacing="1">
+                                <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Details}" Classes="small muted" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Grid ColumnDefinitions="*,Auto">
+                    <Button Content="Open on The Forge" Command="{Binding OpenOnForgeCommand}" />
+                    <Button Grid.Column="1" Classes="primary" MinWidth="150" HorizontalContentAlignment="Center"
+                            Content="{Binding InstallButtonText}" Command="{Binding InstallCommand}" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer>
+            <StackPanel Margin="20,18" Spacing="14">
+                <Grid ColumnDefinitions="Auto,*">
+                    <Border Width="68" Height="68" CornerRadius="10" ClipToBounds="True" Background="#2B3038" VerticalAlignment="Top">
+                        <Panel>
+                            <TextBlock Text="{Binding Card.Initial}" FontSize="26" FontWeight="Bold" Classes="muted"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Image Source="{Binding Card.Thumbnail}" Stretch="UniformToFill" />
+                        </Panel>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="3" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Card.Name}" Classes="h2" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Card.Author, StringFormat='by {0}'}" Classes="muted" />
+                        <TextBlock Text="{Binding Card.Downloads}" Classes="muted small" />
+                    </StackPanel>
+                </Grid>
+
+                <WrapPanel>
+                    <Border Classes="badge" Margin="0,0,6,6" IsVisible="{Binding Card.Category, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <TextBlock Text="{Binding Card.Category}" />
+                    </Border>
+                    <Border Classes="badge info" Margin="0,0,6,6" IsVisible="{Binding Card.IsFikaCompatible}">
+                        <TextBlock Text="Fika compatible" />
+                    </Border>
+                    <Border Classes="badge" Margin="0,0,6,6" IsVisible="{Binding License, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <TextBlock Text="{Binding License}" />
+                    </Border>
+                    <Border Classes="badge success" Margin="0,0,6,6" IsVisible="{Binding Card.IsInstalled}">
+                        <TextBlock Text="{Binding Card.InstalledText}" />
+                    </Border>
+                </WrapPanel>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Dependencies" Classes="h3" />
+                    <TextBlock Text="{Binding DependencyStatus}" Classes="muted small" TextWrapping="Wrap" />
+                    <ItemsControl ItemsSource="{Binding Dependencies}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:DependencyLine">
+                                <TextBlock Text="{Binding Text}" FontSize="13" Margin="0,1" Classes.danger="{Binding IsProblem}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="About" Classes="h3" />
+                    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" />
+                    <SelectableTextBlock Text="{Binding Description}" TextWrapping="Wrap" LineHeight="21" />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

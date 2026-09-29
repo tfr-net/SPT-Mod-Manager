@@ -1,0 +1,109 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SptModManager.App.ViewModels"
+             x:Class="SptModManager.App.Views.InstalledView"
+             x:DataType="vm:InstalledViewModel"
+             x:Name="Root">
+
+    <Grid RowDefinitions="Auto,Auto,*" Margin="26,22,26,14">
+        <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="2">
+                <TextBlock Text="My mods" Classes="h1" />
+                <TextBlock Text="{Binding Summary}" Classes="muted" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button Content="Import mod list" Command="{Binding ImportCommand}"
+                        ToolTip.Tip="Install every mod from a list a friend shared" />
+                <Button Content="Export mod list" Command="{Binding ExportCommand}"
+                        ToolTip.Tip="Save your mods to a file you can share" />
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="0,18,0,14">
+            <TextBox PlaceholderText="Filter installed mods..." Text="{Binding FilterText}" VerticalAlignment="Center" />
+            <CheckBox Grid.Column="1" Content="Show unrecognized files" Margin="14,0,8,0" IsChecked="{Binding ShowUnrecognized}" />
+            <Button Grid.Column="2" Content="Rescan folder" Command="{Binding RescanCommand}" />
+            <Button Grid.Column="3" Content="Check for updates" Margin="8,0,0,0" Command="{Binding CheckUpdatesCommand}" />
+            <Button Grid.Column="4" Classes="primary" Margin="8,0,0,0" Command="{Binding UpdateAllCommand}"
+                    Content="{Binding UpdateCount, StringFormat='Update all ({0})'}" />
+        </Grid>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,18,360">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Bottom" Text="{Binding LastChecked}" Classes="muted small" Margin="0,6,0,0" />
+                <Panel>
+                    <ListBox Classes="cards" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:InstalledModViewModel">
+                                <Border Classes="item" Padding="14,10">
+                                    <Grid ColumnDefinitions="*,110,Auto,Auto">
+                                        <StackPanel Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Details}" Classes="small muted" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1" Text="{Binding VersionText}" VerticalAlignment="Center" Margin="8,0" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding VersionText}" />
+                                        <Border Grid.Column="2" Classes="badge"
+                                                Classes.success="{Binding IsUpToDate}"
+                                                Classes.accent="{Binding CanUpdate}"
+                                                Classes.warning="{Binding IsWarning}"
+                                                Classes.danger="{Binding IsDanger}"
+                                                ToolTip.Tip="{Binding StatusDetail}">
+                                            <TextBlock Text="{Binding StatusText}" />
+                                        </Border>
+                                        <Button Grid.Column="3" Content="Update" Classes="primary small" Margin="10,0,0,0"
+                                                IsVisible="{Binding CanUpdate}"
+                                                Command="{Binding #Root.((vm:InstalledViewModel)DataContext).UpdateOneCommand}"
+                                                CommandParameter="{Binding}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Text="No mods found. Browse The Forge to install some, or pick your SPT folder in Settings."
+                               Classes="muted" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="380"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               IsVisible="{Binding !Items.Count}" />
+                </Panel>
+            </DockPanel>
+
+            <Border Grid.Column="2" Classes="card">
+                <Panel>
+                    <TextBlock Text="Select a mod to see its files and actions." Classes="muted small" TextWrapping="Wrap"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNull}}" />
+                    <DockPanel IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <StackPanel DockPanel.Dock="Top" Spacing="6">
+                            <TextBlock Text="{Binding Selected.Name}" Classes="h2" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding Selected.VersionText}" Classes="muted" />
+                            <TextBlock Text="{Binding Selected.StatusText}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Selected.StatusDetail}" Classes="muted small" TextWrapping="Wrap"
+                                       IsVisible="{Binding Selected.StatusDetail, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <TextBlock Text="{Binding Selected.Details}" Classes="muted small" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,12,0,0">
+                            <Button Content="Update" Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    IsVisible="{Binding Selected.CanUpdate}"
+                                    Command="{Binding UpdateOneCommand}" CommandParameter="{Binding Selected}" />
+                            <Button Content="Open on The Forge" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    Command="{Binding OpenOnForgeCommand}" />
+                            <Button Content="Uninstall" Classes="danger" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    Command="{Binding UninstallCommand}" />
+                        </StackPanel>
+                        <DockPanel Margin="0,14,0,0">
+                            <TextBlock DockPanel.Dock="Top" Text="{Binding Selected.FilesHeader}" Classes="h3" Margin="0,0,0,6" />
+                            <ScrollViewer>
+                                <ItemsControl ItemsSource="{Binding Selected.Files}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="x:String">
+                                            <TextBlock Text="{Binding}" Classes="small muted" TextTrimming="PrefixCharacterEllipsis" Margin="0,1" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
+                    </DockPanel>
+                </Panel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

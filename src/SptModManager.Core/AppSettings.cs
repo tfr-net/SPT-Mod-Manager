@@ -17,9 +17,11 @@ public sealed class AppSettings
 
     public bool ShowOnlyCompatibleMods { get; set; } = true;
 
-    public static string AppDataDirectory { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData, Environment.SpecialFolderOption.Create),
-        "SptModManager");
+    /// <summary>Where settings live. SPTMM_DATA_DIR overrides it (used by tests and portable setups).</summary>
+    public static string AppDataDirectory =>
+        Environment.GetEnvironmentVariable("SPTMM_DATA_DIR") is { Length: > 0 } overridden
+            ? overridden
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData, Environment.SpecialFolderOption.Create), "SptModManager");
 
     public static string DownloadDirectory => Path.Combine(Path.GetTempPath(), "SptModManager", "downloads");
 

@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SptModManager.App.ViewModels"
+             x:Class="SptModManager.App.Views.SptView"
+             x:DataType="vm:SptViewModel">
+
+    <ScrollViewer>
+        <StackPanel Margin="26,22,26,20" Spacing="16" MaxWidth="920" HorizontalAlignment="Left">
+            <StackPanel Spacing="2">
+                <TextBlock Text="SPT updates" Classes="h1" />
+                <TextBlock Text="Keep the SPT core current with the official SP-Tushonka/build releases." Classes="muted" />
+            </StackPanel>
+
+            <Border Classes="card">
+                <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto" >
+                    <TextBlock Text="Installed version" Classes="muted" Margin="0,4" />
+                    <TextBlock Grid.Column="1" Text="{Binding InstalledVersion}" FontWeight="SemiBold" Margin="0,4" />
+                    <TextBlock Grid.Row="1" Text="Build" Classes="muted" Margin="0,4" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding BuildInfo}" Margin="0,4" TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="2" Text="Targets EFT client" Classes="muted" Margin="0,4" />
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ClientVersion}" Margin="0,4" />
+                    <TextBlock Grid.Row="3" Text="Location" Classes="muted" Margin="0,4" />
+                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Location}" Margin="0,4" TextWrapping="Wrap" />
+                </Grid>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="Status" Classes="h3" VerticalAlignment="Center" />
+                        <Border Classes="badge success" IsVisible="{Binding IsUpToDate}">
+                            <TextBlock Text="Up to date" />
+                        </Border>
+                        <Border Classes="badge accent" IsVisible="{Binding CanUpdate}">
+                            <TextBlock Text="Update ready" />
+                        </Border>
+                    </StackPanel>
+                    <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+                    <TextBlock IsVisible="{Binding ShowInstallerHint}" Classes="muted small" TextWrapping="Wrap"
+                               Text="Minor and major SPT versions (and EFT client changes) need the official installer. The manager only applies patch updates in place." />
+                    <WrapPanel>
+                        <Button Content="Check for updates" Command="{Binding CheckCommand}" Margin="0,0,8,8" />
+                        <Button Content="Update SPT" Classes="primary" Command="{Binding UpdateCommand}" Margin="0,0,8,8" />
+                        <Button Content="Official installer" Command="{Binding OpenInstallerCommand}" Margin="0,0,8,8"
+                                IsVisible="{Binding ShowInstallerHint}" />
+                        <Button Content="Open game folder" Command="{Binding OpenFolderCommand}" Margin="0,0,8,8" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card" IsVisible="{Binding DisplayedRelease, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="{Binding DisplayedRelease.Title}" Classes="h2" />
+                            <TextBlock Text="{Binding DisplayedRelease.PublishedAt, StringFormat='Published {0:d MMM yyyy}'}" Classes="muted small" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="View on GitHub" Command="{Binding OpenReleaseCommand}" VerticalAlignment="Top" />
+                    </Grid>
+                    <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto">
+                        <TextBlock Text="Requires EFT" Classes="muted" Margin="0,3" />
+                        <TextBlock Grid.Column="1" Text="{Binding DisplayedRelease.RequiredEftVersion}" Margin="0,3" />
+                        <TextBlock Grid.Row="1" Text="Download" Classes="muted" Margin="0,3" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DisplayedRelease.FileName}" Margin="0,3" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="2" Text="MD5 (base64)" Classes="muted" Margin="0,3" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DisplayedRelease.Md5Base64}" Margin="0,3" />
+                    </Grid>
+                    <TextBlock Text="Release notes" Classes="h3" Margin="0,6,0,0" />
+                    <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="8" Padding="14" MaxHeight="360">
+                        <ScrollViewer>
+                            <SelectableTextBlock Text="{Binding ReleaseNotes}" TextWrapping="Wrap" FontSize="13" LineHeight="20" />
+                        </ScrollViewer>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

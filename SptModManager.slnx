@@ -4,6 +4,7 @@
     <Project Path="src/SptModManager.Core/SptModManager.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/SptModManager.App.Tests/SptModManager.App.Tests.csproj" />
     <Project Path="tests/SptModManager.Core.Tests/SptModManager.Core.Tests.csproj" />
   </Folder>
   <Folder Name="/tests/Fixtures/">

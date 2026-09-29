@@ -1,0 +1,96 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SptModManager.App.ViewModels"
+        xmlns:services="using:SptModManager.App.Services"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1320" d:DesignHeight="840"
+        x:Class="SptModManager.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Icon="/Assets/app.ico"
+        Title="SPT Mod Manager"
+        Width="1320" Height="840" MinWidth="1000" MinHeight="640"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource AppBackground}">
+
+    <Grid ColumnDefinitions="232,*" RowDefinitions="*,Auto">
+
+        <!-- Sidebar -->
+        <Border Grid.RowSpan="2" Background="{StaticResource SidebarBackground}"
+                BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="0,0,1,0">
+            <DockPanel Margin="14,18,14,14">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="6,0,0,24">
+                    <Image Source="/Assets/app.png" Width="36" Height="36" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="SPT Mod Manager" FontWeight="SemiBold" FontSize="15" />
+                        <TextBlock Text="powered by The Forge" Classes="muted small" />
+                    </StackPanel>
+                </StackPanel>
+
+                <Border DockPanel.Dock="Bottom" Classes="card" Padding="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding InstallTitle}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding InstallSubtitle}" Classes="muted small"
+                                   TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding InstallSubtitle}" />
+                    </StackPanel>
+                </Border>
+
+                <ListBox Classes="nav" ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedNav}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:NavItem">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <PathIcon Data="{Binding Icon}" Width="16" Height="16" />
+                                <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- Current page -->
+        <ContentControl Grid.Column="1" Content="{Binding SelectedNav.Page}" IsEnabled="{Binding !IsBusy}" />
+
+        <!-- Activity log -->
+        <Border Grid.Column="1" IsVisible="{Binding IsLogOpen}" VerticalAlignment="Bottom" Height="240"
+                Background="#171A1E" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="0,1,0,0">
+            <DockPanel>
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="16,8,12,4">
+                    <TextBlock Text="Activity" Classes="h3" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Content="Clear" Classes="subtle small" Command="{Binding ClearLogCommand}" />
+                </Grid>
+                <ListBox Classes="log" ItemsSource="{Binding LogEntries}" Margin="8,0,8,8">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="services:LogEntry">
+                            <Grid ColumnDefinitions="70,*">
+                                <TextBlock Text="{Binding TimeText}" Classes="muted small" VerticalAlignment="Top" />
+                                <SelectableTextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap" FontSize="12"
+                                                     Classes.danger="{Binding IsError}"
+                                                     Classes.warning="{Binding IsWarning}"
+                                                     Classes.success="{Binding IsSuccess}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- Status bar -->
+        <Border Grid.Column="1" Grid.Row="1" Background="{StaticResource SidebarBackground}"
+                BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="0,1,0,0" Padding="16,6">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                <TextBlock Text="{Binding BusyMessage}" IsVisible="{Binding IsBusy}" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding LastLogMessage}" IsVisible="{Binding !IsBusy}" VerticalAlignment="Center"
+                           Classes="muted" TextTrimming="CharacterEllipsis" />
+                <ProgressBar Grid.Column="1" Width="220" Margin="12,0" VerticalAlignment="Center"
+                             IsVisible="{Binding IsBusy}" IsIndeterminate="{Binding IsProgressIndeterminate}"
+                             Value="{Binding ProgressValue}" />
+                <Button Grid.Column="2" Content="Cancel" Classes="subtle small" IsVisible="{Binding IsBusy}"
+                        Command="{Binding CancelOperationCommand}" />
+                <ToggleButton Grid.Column="3" Content="Activity log" Margin="8,0,0,0" Padding="10,3" FontSize="12"
+                              IsChecked="{Binding IsLogOpen}" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

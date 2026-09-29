@@ -1,0 +1,61 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SptModManager.App.ViewModels"
+             x:Class="SptModManager.App.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+    <ScrollViewer>
+        <StackPanel Margin="26,22,26,20" Spacing="16" MaxWidth="860" HorizontalAlignment="Left">
+            <TextBlock Text="Settings" Classes="h1" />
+
+            <Border Classes="card">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="SPT folder" Classes="h3" />
+                    <TextBlock Classes="muted" TextWrapping="Wrap"
+                               Text="Pick the folder that has EscapeFromTarkov.exe, BepInEx and SPT_Runtime (or SPT on 4.0) in it." />
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <TextBox Text="{Binding GamePath}" PlaceholderText="C:\SPT" />
+                        <Button Grid.Column="1" Content="Browse..." Margin="8,0,0,0" Command="{Binding BrowseCommand}" />
+                        <Button Grid.Column="2" Content="Use this folder" Classes="primary" Margin="8,0,0,0" Command="{Binding UseFolderCommand}" />
+                    </Grid>
+                    <TextBlock Text="{Binding DetectedText}" Classes="success" TextWrapping="Wrap"
+                               IsVisible="{Binding DetectedText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Updates" Classes="h3" />
+                    <CheckBox Content="Check for mod and SPT updates when the app starts" IsChecked="{Binding CheckForUpdatesOnStartup}" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Advanced" Classes="h3" />
+                    <TextBlock Text="The Forge address" Classes="muted small" />
+                    <TextBox Text="{Binding ForgeBaseUrl}" />
+                    <TextBlock Text="SPT release repository (GitHub owner/name)" Classes="muted small" />
+                    <TextBox Text="{Binding ReleaseRepository}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Save" Classes="primary" Command="{Binding SaveEndpointsCommand}" />
+                        <Button Content="Reset to defaults" Command="{Binding ResetEndpointsCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="About" Classes="h3" />
+                    <TextBlock Text="{Binding AppVersion, StringFormat='SPT Mod Manager {0}'}" />
+                    <TextBlock Classes="muted small" TextWrapping="Wrap"
+                               Text="A community tool. Mod data comes from The Forge (sp-mod.com) and SPT releases from GitHub. Not affiliated with SPT or Battlestate Games." />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding SettingsFolder}" Classes="muted small" VerticalAlignment="Center" />
+                        <Button Content="Open" Classes="small" Command="{Binding OpenSettingsFolderCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

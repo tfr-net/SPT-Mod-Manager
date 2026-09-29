@@ -1,0 +1,115 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SptModManager.App.ViewModels"
+             x:Class="SptModManager.App.Views.BrowseView"
+             x:DataType="vm:BrowseViewModel">
+
+    <Grid RowDefinitions="Auto,Auto,*" Margin="26,22,26,14">
+        <StackPanel Spacing="2">
+            <TextBlock Text="Browse mods" Classes="h1" />
+            <TextBlock Text="Search The Forge and install mods together with everything they depend on." Classes="muted" />
+        </StackPanel>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto" Margin="0,18,0,14">
+            <TextBox PlaceholderText="Search mods..." Text="{Binding SearchText}" VerticalAlignment="Center">
+                <TextBox.KeyBindings>
+                    <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
+                </TextBox.KeyBindings>
+            </TextBox>
+            <ComboBox Grid.Column="1" Width="190" Margin="8,0,0,0" VerticalAlignment="Center"
+                      ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CategoryOption">
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <ComboBox Grid.Column="2" Width="170" Margin="8,0,0,0" VerticalAlignment="Center"
+                      ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:SortOption">
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <CheckBox Grid.Column="3" Content="Works with my SPT" Margin="14,0,0,0" IsChecked="{Binding OnlyCompatible}" />
+            <CheckBox Grid.Column="4" Content="Fika" Margin="8,0,0,0" IsChecked="{Binding FikaOnly}"
+                      ToolTip.Tip="Only mods confirmed to work with Fika multiplayer" />
+            <Button Grid.Column="5" Content="Search" Classes="primary" Margin="8,0,0,0" Command="{Binding SearchCommand}" />
+        </Grid>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,18,430">
+            <DockPanel>
+                <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto" Margin="0,8,6,0">
+                    <TextBlock Text="{Binding PageText}" Classes="muted" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Content="Previous" Command="{Binding PreviousPageCommand}" />
+                    <Button Grid.Column="2" Content="Next" Margin="8,0,0,0" Command="{Binding NextPageCommand}" />
+                </Grid>
+
+                <Panel>
+                    <ListBox Classes="cards" ItemsSource="{Binding Results}" SelectedItem="{Binding SelectedMod}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ModCardViewModel">
+                                <Border Classes="item">
+                                    <Grid ColumnDefinitions="60,*,Auto">
+                                        <Border Width="56" Height="56" CornerRadius="8" ClipToBounds="True" Background="#2B3038" VerticalAlignment="Top">
+                                            <Panel>
+                                                <TextBlock Text="{Binding Initial}" FontSize="22" FontWeight="Bold" Classes="muted"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
+                                            </Panel>
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1" Margin="14,0,12,0" Spacing="4">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="15"
+                                                           TextTrimming="CharacterEllipsis" MaxWidth="360" />
+                                                <Border Classes="badge accent" IsVisible="{Binding IsFeatured}">
+                                                    <TextBlock Text="Featured" />
+                                                </Border>
+                                                <Border Classes="badge success" IsVisible="{Binding IsInstalled}">
+                                                    <TextBlock Text="{Binding InstalledText}" />
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Teaser}" Classes="muted" TextWrapping="Wrap" MaxLines="2"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                                <TextBlock Text="{Binding Author, StringFormat='by {0}'}" Classes="small muted" />
+                                                <TextBlock Text="{Binding Downloads}" Classes="small muted" />
+                                                <TextBlock Text="{Binding Category}" Classes="small muted" />
+                                                <TextBlock Text="Fika ready" Classes="small info" IsVisible="{Binding IsFikaCompatible}" />
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2" Spacing="4" HorizontalAlignment="Right">
+                                            <TextBlock Text="{Binding LatestVersionText}" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                                            <TextBlock Text="{Binding SptConstraint}" Classes="small muted" HorizontalAlignment="Right" />
+                                            <TextBlock Text="Not for your SPT" Classes="small warning" HorizontalAlignment="Right"
+                                                       IsVisible="{Binding !IsCompatible}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" VerticalAlignment="Top" MinHeight="3" Height="3" />
+                    <TextBlock Text="{Binding ErrorMessage}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="420"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                </Panel>
+            </DockPanel>
+
+            <Border Grid.Column="2" Classes="card" Padding="0" ClipToBounds="True">
+                <Panel>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6"
+                                IsVisible="{Binding Details, Converter={x:Static ObjectConverters.IsNull}}">
+                        <TextBlock Text="Pick a mod" Classes="h3" HorizontalAlignment="Center" />
+                        <TextBlock Text="Its versions, dependencies and description show up here." Classes="muted small" />
+                    </StackPanel>
+                    <ContentControl Content="{Binding Details}" />
+                </Panel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>
