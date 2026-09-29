@@ -1,7 +1,14 @@
 name: Release
 
-# Pushing a version tag (e.g. v0.1.0) builds the Windows exe and publishes it as a GitHub Release.
+# Builds the single-file Windows exe and publishes it as a GitHub Release. Run it from the Actions tab
+# ("Run workflow", enter a version such as 0.2.0), or push a version tag such as v0.2.0.
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, without the v (e.g. 0.2.0)"
+        required: true
+        default: "0.1.0"
   push:
     tags: ["v*"]
 
@@ -14,6 +21,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Work out version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            VERSION="${INPUT_VERSION#v}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::'$VERSION' is not a version like 1.2.3"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
@@ -22,16 +46,16 @@ jobs:
         run: dotnet test SptModManager.slnx -c Release
 
       - name: Publish Windows exe
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          dotnet publish src/SptModManager.App -c Release -r win-x64 --self-contained \
-            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
-            -p:EnableCompressionInSingleFile=true -p:DebugType=none \
-            -p:Version="$VERSION" -o publish
+        run: >
+          dotnet publish src/SptModManager.App -c Release -r win-x64 --self-contained
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true -p:DebugType=none
+          -p:Version=${{ steps.version.outputs.version }} -o publish
 
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
           cat > notes.md <<'NOTES'
           ## Download
@@ -45,7 +69,9 @@ jobs:
           See the [README](https://github.com/${{ github.repository }}#readme) for what it does and how it works.
           NOTES
 
-          gh release create "$GITHUB_REF_NAME" publish/SptModManager.exe \
-            --title "SPT Mod Manager $GITHUB_REF_NAME" \
+          # Creates the tag on this commit when it does not exist yet (manual runs).
+          gh release create "$TAG" publish/SptModManager.exe \
+            --target "$GITHUB_SHA" \
+            --title "SPT Mod Manager $TAG" \
             --notes-file notes.md \
             --generate-notes

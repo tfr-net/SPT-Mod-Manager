@@ -16,7 +16,8 @@ Grab **SptModManager.exe** from the [latest release](https://github.com/tfr-net/
 It is a single self-contained file for Windows 10/11 (64-bit): no installer and no .NET download needed. Windows may
 show a SmartScreen warning because the exe is not code-signed; click **More info**, then **Run anyway**.
 
-New releases are published by pushing a version tag (for example `v0.2.0`), which runs the Release workflow.
+New releases come from the **Release** workflow: open the Actions tab, pick Release, hit **Run workflow** and enter
+the version (for example `0.2.0`). Pushing a tag like `v0.2.0` does the same.
 
 ## Features
 
