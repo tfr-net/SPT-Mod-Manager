@@ -8,7 +8,7 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <AssemblyName>SptModManager</AssemblyName>
     <RootNamespace>SptModManager.App</RootNamespace>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <Product>SPT Mod Manager</Product>
     <AssemblyTitle>SPT Mod Manager</AssemblyTitle>
     <Company>SPT Mod Manager</Company>
