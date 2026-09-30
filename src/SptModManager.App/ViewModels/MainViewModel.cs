@@ -98,11 +98,11 @@ public partial class MainViewModel : ViewModelBase
 
         if (Uri.TryCreate(url, UriKind.Absolute, out var absolute) && absolute.Scheme is "http" or "https")
         {
-            return absolute.ToString();
+            return absolute.AbsoluteUri;
         }
 
         return Uri.TryCreate(new Uri(Services.Settings.ForgeBaseUrl.TrimEnd('/') + "/"), url.TrimStart('/'), out var combined)
-            ? combined.ToString()
+            ? combined.AbsoluteUri
             : null;
     }
 

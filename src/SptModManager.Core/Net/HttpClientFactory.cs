@@ -5,8 +5,13 @@ namespace SptModManager.Core.Net;
 
 public static class HttpClientFactory
 {
+    /// <summary>
+    /// The Forge sits behind Cloudflare, which turns away some requests that do not look like they come from a browser
+    /// (its image host included). A Mozilla-style prefix, which is what browsers and most well-behaved tools send,
+    /// keeps the manager on the right side of that while still naming itself.
+    /// </summary>
     public static string UserAgent { get; } =
-        $"SptModManager/{Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0"} (+https://github.com/tfr-net/SPT-Mod-Manager)";
+        $"Mozilla/5.0 (SPT Mod Manager {(Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetName().Version?.ToString(3) ?? "1.0.0"}; desktop app)";
 
     /// <summary>Client for API calls and images: follows redirects and gives up after 30 seconds.</summary>
     public static HttpClient CreateApiClient() => Create(followRedirects: true, TimeSpan.FromSeconds(30));

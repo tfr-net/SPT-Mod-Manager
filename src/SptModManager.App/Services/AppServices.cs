@@ -14,8 +14,8 @@ public sealed class AppServices
         Dialogs = dialogs;
         Http = HttpClientFactory.CreateApiClient();
         Downloader = new FileDownloader(HttpClientFactory.CreateDownloadClient());
-        Images = new ImageLoader(Http);
         Log = new UiActivityLog();
+        Images = new ImageLoader(Http, Log, () => Settings.ForgeBaseUrl);
         Forge = new ForgeClient(Http, settings.ForgeBaseUrl);
         Releases = new SptReleaseClient(Http, settings.ReleaseRepository);
     }
@@ -27,8 +27,8 @@ public sealed class AppServices
         Dialogs = dialogs;
         Http = http;
         Downloader = downloader;
-        Images = new ImageLoader(http);
         Log = new UiActivityLog();
+        Images = new ImageLoader(http, Log, () => Settings.ForgeBaseUrl);
         Forge = forge;
         Releases = releases;
     }
