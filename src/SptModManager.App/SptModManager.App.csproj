@@ -22,6 +22,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Official 7-Zip standalone extractor (public domain), unpacked to the app data folder on first use. -->
+    <EmbeddedResource Include="Tools\7zr.exe" LogicalName="SptModManager.Tools.7zr.exe" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.3" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.3" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.3" />

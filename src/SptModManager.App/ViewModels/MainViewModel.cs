@@ -118,6 +118,11 @@ public partial class MainViewModel : ViewModelBase
     {
         Log.Info("Welcome to SPT Mod Manager.");
 
+        await Task.Run(() => BundledTools.Install(Log));
+        Log.Info(Core.IO.SevenZipTool.Locate() is { } sevenZip
+            ? $"Using 7-Zip for fast .7z extraction ({sevenZip})."
+            : "7-Zip was not found, so .7z archives use the slower built-in extractor.");
+
         if (!string.IsNullOrWhiteSpace(Services.Settings.GamePath))
         {
             await OpenInstallAsync(Services.Settings.GamePath, showErrors: false);

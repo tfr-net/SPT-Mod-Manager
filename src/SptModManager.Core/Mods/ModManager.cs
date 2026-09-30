@@ -545,13 +545,17 @@ public sealed class ModManager
             var download = await _downloader.DownloadAsync(
                 step.Link ?? throw new InvalidOperationException($"No download link for {step.Name}."),
                 _downloadDirectory,
-                new Progress<DownloadProgress>(p => progress?.Report(new OperationProgress($"{prefix}Downloading {step.Name} {step.ToVersion}...", p.Fraction))),
+                new InlineProgress<DownloadProgress>(p => progress?.Report(new OperationProgress($"{prefix}Downloading {step.Name} {step.ToVersion}...", p.Fraction))),
                 cancellationToken);
 
             try
             {
-                progress?.Report(new OperationProgress($"{prefix}Installing {step.Name} {step.ToVersion}...", null));
-                InstallArchive(step, download.FilePath, cancellationToken);
+                progress?.Report(new OperationProgress($"{prefix}Installing {step.Name} {step.ToVersion}...", 0));
+                InstallArchive(
+                    step,
+                    download.FilePath,
+                    new InlineProgress<double>(f => progress?.Report(new OperationProgress($"{prefix}Installing {step.Name} {step.ToVersion}... {f:P0}", f))),
+                    cancellationToken);
             }
             finally
             {
@@ -568,7 +572,7 @@ public sealed class ModManager
     /// Extracts a downloaded mod archive into the game folder and records the files it owns. Files from the previous
     /// version that the new one no longer ships are removed; config files the mod created at runtime are untouched.
     /// </summary>
-    internal void InstallArchive(PlanStep step, string archivePath, CancellationToken cancellationToken = default)
+    internal void InstallArchive(PlanStep step, string archivePath, IProgress<double>? progress = null, CancellationToken cancellationToken = default)
     {
         var layout = ArchiveLayout.Plan(ArchiveExtractor.ListFiles(archivePath), _install.DataFolderName);
         foreach (var warning in layout.Warnings)
@@ -593,7 +597,14 @@ public sealed class ModManager
             }
         }
 
-        var written = ArchiveExtractor.Extract(archivePath, _install.RootPath, key => layout.Map.GetValueOrDefault(key), cancellationToken: cancellationToken);
+        // The extractor hands back normalized paths ("a/b.dll") whatever separators the archive used.
+        var targets = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, target) in layout.Map)
+        {
+            targets.TryAdd(PathUtil.NormalizeRelative(key), target);
+        }
+
+        var written = ArchiveExtractor.Extract(archivePath, _install.RootPath, key => targets.GetValueOrDefault(key), progress, cancellationToken);
 
         if (existing is not null)
         {

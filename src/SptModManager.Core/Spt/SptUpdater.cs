@@ -152,7 +152,7 @@ public sealed class SptUpdater(
         var download = await downloader.DownloadAsync(
             release.DownloadUrl,
             downloadDirectory,
-            new Progress<DownloadProgress>(p => progress?.Report(new OperationProgress($"Downloading SPT {release.Version}...", p.Fraction))),
+            new InlineProgress<DownloadProgress>(p => progress?.Report(new OperationProgress($"Downloading SPT {release.Version}...", p.Fraction))),
             cancellationToken);
 
         try
@@ -184,7 +184,7 @@ public sealed class SptUpdater(
                         ? null
                         : normalized;
                 },
-                new Progress<double>(f => progress?.Report(new OperationProgress($"Installing SPT {release.Version}...", f))),
+                new InlineProgress<double>(f => progress?.Report(new OperationProgress($"Installing SPT {release.Version}... {f:P0}", f))),
                 cancellationToken);
         }
         finally

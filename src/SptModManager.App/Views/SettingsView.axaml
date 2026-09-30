@@ -50,6 +50,8 @@
                     <TextBlock Text="{Binding AppVersion, StringFormat='SPT Mod Manager {0}'}" />
                     <TextBlock Classes="muted small" TextWrapping="Wrap"
                                Text="A community tool. Mod data comes from The Forge (sp-mod.com) and SPT releases from GitHub. Not affiliated with SPT or Battlestate Games." />
+                    <TextBlock Classes="muted small" TextWrapping="Wrap"
+                               Text="Includes 7zr.exe, the 7-Zip standalone extractor by Igor Pavlov (public domain), for fast .7z unpacking when 7-Zip is not installed." />
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Text="{Binding SettingsFolder}" Classes="muted small" VerticalAlignment="Center" />
                         <Button Content="Open" Classes="small" Command="{Binding OpenSettingsFolderCommand}" />
