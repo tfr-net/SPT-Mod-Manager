@@ -31,6 +31,30 @@ public static class SptCompatibility
     }
 
     /// <summary>
+    /// The first later patch of the installed minor version that <paramref name="constraint"/> accepts, e.g. "4.1.5"
+    /// for a mod tagged 4.1.5 on an installed 4.1.3. Null when no patch of this minor fits.
+    /// </summary>
+    public static string? EarliestLaterPatch(string? installedSptVersion, string? constraint, int maxPatchesAhead = 50)
+    {
+        var installed = VersionUtil.TryParse(installedSptVersion);
+        if (installed is null || string.IsNullOrWhiteSpace(constraint))
+        {
+            return null;
+        }
+
+        for (var patch = installed.Patch + 1; patch <= installed.Patch + maxPatchesAhead; patch++)
+        {
+            var candidate = $"{installed.Major}.{installed.Minor}.{patch}";
+            if (VersionUtil.Satisfies(candidate, constraint))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// A Forge filter constraint covering every patch of the installed minor up to the installed version,
     /// e.g. "&gt;=4.1.0 &lt;=4.1.6". Returns null when the version cannot be read.
     /// </summary>

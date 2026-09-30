@@ -72,6 +72,12 @@ public sealed class ModManager
     {
         foreach (var mod in _state.Mods.ToList())
         {
+            // SPT's own files are never a mod; older scans listed spt-prepatch.dll as one.
+            if (mod.Source == InstallSource.Detected)
+            {
+                mod.Files.RemoveAll(ModScanner.IsSptCoreFile);
+            }
+
             mod.Files.RemoveAll(f => !File.Exists(Path.Combine(_install.RootPath, f)));
 
             if (mod.Files.Count == 0)
@@ -530,42 +536,79 @@ public sealed class ModManager
     // Install / update execution
     // ---------------------------------------------------------------------------------------------------------------
 
+    /// <summary>
+    /// Downloads and installs each step in order. A step that fails (a dead download link, say) is reported and
+    /// skipped, along with any step that depends on it, and the rest still install. When anything failed, a
+    /// <see cref="PlanExecutionException"/> listing the failures is thrown at the end.
+    /// </summary>
     public async Task ExecutePlanAsync(InstallPlan plan, IProgress<OperationProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         var work = plan.ActionableSteps.ToList();
+        var failures = new List<string>();
+        var failedModIds = new HashSet<int>();
 
         for (var i = 0; i < work.Count; i++)
         {
             var step = work[i];
             var prefix = work.Count > 1 ? $"[{i + 1}/{work.Count}] " : string.Empty;
 
-            progress?.Report(new OperationProgress($"{prefix}Downloading {step.Name} {step.ToVersion}...", 0));
-            _log.Info($"{prefix}{step.Describe()}");
-
-            var download = await _downloader.DownloadAsync(
-                step.Link ?? throw new InvalidOperationException($"No download link for {step.Name}."),
-                _downloadDirectory,
-                new InlineProgress<DownloadProgress>(p => progress?.Report(new OperationProgress($"{prefix}Downloading {step.Name} {step.ToVersion}...", p.Fraction))),
-                cancellationToken);
+            if (step.DependsOn.FirstOrDefault(failedModIds.Contains) is var missing and not 0)
+            {
+                var dependency = work.FirstOrDefault(s => s.ForgeModId == missing)?.Name ?? $"mod {missing}";
+                failedModIds.Add(step.ForgeModId);
+                failures.Add($"{step.Name}: skipped because {dependency} failed to install.");
+                _log.Warn($"{prefix}Skipped {step.Name} because {dependency} failed to install.");
+                continue;
+            }
 
             try
             {
-                progress?.Report(new OperationProgress($"{prefix}Installing {step.Name} {step.ToVersion}...", 0));
-                InstallArchive(
-                    step,
-                    download.FilePath,
-                    new InlineProgress<double>(f => progress?.Report(new OperationProgress($"{prefix}Installing {step.Name} {step.ToVersion}... {f:P0}", f))),
-                    cancellationToken);
+                await InstallStepAsync(step, prefix, progress, cancellationToken);
+                _log.Success($"{step.Name} {step.ToVersion} installed.");
             }
-            finally
+            catch (Exception e) when (e is not OperationCanceledException)
             {
-                TryDelete(download.FilePath);
+                failedModIds.Add(step.ForgeModId);
+                failures.Add($"{step.Name}: {e.Message}");
+                _log.Error($"{prefix}Could not install {step.Name} {step.ToVersion}: {e.Message}");
             }
-
-            _log.Success($"{step.Name} {step.ToVersion} installed.");
         }
 
         progress?.Report(new OperationProgress("Done.", 1));
+
+        if (failures.Count > 0)
+        {
+            var installed = work.Count - failures.Count;
+            throw new PlanExecutionException(
+                $"{installed} of {work.Count} mod(s) installed. These did not:\n• " + string.Join("\n• ", failures),
+                failures);
+        }
+    }
+
+    private async Task InstallStepAsync(PlanStep step, string prefix, IProgress<OperationProgress>? progress, CancellationToken cancellationToken)
+    {
+        progress?.Report(new OperationProgress($"{prefix}Downloading {step.Name} {step.ToVersion}...", 0));
+        _log.Info($"{prefix}{step.Describe()}");
+
+        var download = await _downloader.DownloadAsync(
+            step.Link ?? throw new InvalidOperationException("The Forge has no download link for this version."),
+            _downloadDirectory,
+            new InlineProgress<DownloadProgress>(p => progress?.Report(new OperationProgress($"{prefix}Downloading {step.Name} {step.ToVersion}...", p.Fraction))),
+            cancellationToken);
+
+        try
+        {
+            progress?.Report(new OperationProgress($"{prefix}Installing {step.Name} {step.ToVersion}...", 0));
+            InstallArchive(
+                step,
+                download.FilePath,
+                new InlineProgress<double>(f => progress?.Report(new OperationProgress($"{prefix}Installing {step.Name} {step.ToVersion}... {f:P0}", f))),
+                cancellationToken);
+        }
+        finally
+        {
+            TryDelete(download.FilePath);
+        }
     }
 
     /// <summary>
@@ -818,7 +861,46 @@ public sealed class ModManager
             }
         }
 
+        await ExplainIncompatibleAsync(forgeMods, results, sptVersion, cancellationToken);
         return results;
+    }
+
+    /// <summary>
+    /// Spells out which SPT version an incompatible mod was made for (e.g. "made for SPT 4.1.5; you have 4.1.3"), and
+    /// whether a later SPT patch would make it compatible, instead of a bare "not for your SPT".
+    /// </summary>
+    private async Task ExplainIncompatibleAsync(List<InstalledMod> mods, Dictionary<string, ModUpdateInfo> results, string sptVersion, CancellationToken cancellationToken)
+    {
+        var incompatible = mods
+            .Where(m => results.GetValueOrDefault(m.Key)?.Status == ModUpdateStatus.IncompatibleWithSpt)
+            .Take(MaxVersionFallbackLookups)
+            .ToList();
+
+        foreach (var mod in incompatible)
+        {
+            IReadOnlyList<ForgeModVersion> versions;
+            try
+            {
+                versions = await _forge.GetModVersionsAsync(mod.ForgeModId!.Value, cancellationToken: cancellationToken);
+            }
+            catch (ForgeApiException)
+            {
+                continue;
+            }
+
+            var installed = versions.FirstOrDefault(v => VersionUtil.AreEquivalent(v.Version, mod.Version));
+            var constraint = installed?.SptVersionConstraint;
+            if (string.IsNullOrWhiteSpace(constraint))
+            {
+                continue;
+            }
+
+            var needed = SptCompatibility.EarliestLaterPatch(sptVersion, constraint);
+            var reason = $"Version {mod.Version} is made for SPT {constraint}, and you have SPT {sptVersion}."
+                         + (needed is null ? string.Empty : $" Updating SPT to {needed} or later should make it compatible.");
+
+            results[mod.Key] = results[mod.Key] with { Reason = reason, RequiredSptVersion = needed };
+        }
     }
 
     /// <summary>

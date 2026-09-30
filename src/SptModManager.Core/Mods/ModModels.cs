@@ -80,6 +80,13 @@ public sealed record ModUpdateInfo(
     int? LatestVersionId = null,
     string? Link = null,
     long? ContentLength = null,
-    string? Reason = null);
+    string? Reason = null,
+    string? RequiredSptVersion = null);
+
+/// <summary>Some steps of an install plan failed; the others were installed.</summary>
+public sealed class PlanExecutionException(string message, IReadOnlyList<string> failures) : Exception(message)
+{
+    public IReadOnlyList<string> Failures { get; } = failures;
+}
 
 public sealed record UninstallResult(IReadOnlyList<InstalledMod> BrokenDependents, IReadOnlyList<InstalledMod> OrphanedDependencies);

@@ -14,6 +14,7 @@ public class ModListServiceTests
             new InstalledMod { ForgeModId = 1, Guid = "com.a", Name = "Alpha", Version = "1.0.0" },
             new InstalledMod { ForgeModId = 2, Guid = "com.b", Name = "Beta", Version = "2.0.0", InstalledAsDependency = true },
             new InstalledMod { Name = "Mystery.dll" },
+            new InstalledMod { Guid = "com.side.dlc", Name = "Side DLC bundled with Alpha", Version = "1.0.0" },
         ], "4.1.6", "My Setup");
 
         using var stream = new MemoryStream();

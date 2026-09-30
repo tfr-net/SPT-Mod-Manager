@@ -44,4 +44,13 @@ public class SptCompatibilityTests
     {
         Assert.Equal(expected, VersionUtil.Satisfies(version, constraint));
     }
+    [Theory]
+    [InlineData("4.1.3", "4.1.5", "4.1.5")]
+    [InlineData("4.1.3", ">=4.1.4", "4.1.4")]
+    [InlineData("4.1.6", "4.1.5", null)]            // already past it
+    [InlineData("4.1.3", ">=4.0.0 <4.1.0", null)]   // a different minor
+    public void EarliestLaterPatch_FindsTheSptVersionAModNeeds(string installed, string constraint, string? expected)
+    {
+        Assert.Equal(expected, SptCompatibility.EarliestLaterPatch(installed, constraint));
+    }
 }

@@ -25,6 +25,25 @@ public sealed record LocalModComponent(
 /// </summary>
 public static class ModScanner
 {
+    /// <summary>
+    /// True for files that ship with SPT itself rather than a mod: SPT's client modules in BepInEx/plugins/spt and its
+    /// preloader patcher (spt-prepatch.dll) in BepInEx/patchers. SPT names every module spt-*.dll.
+    /// </summary>
+    public static bool IsSptCoreFile(string relativePath)
+    {
+        var path = PathUtil.NormalizeRelative(relativePath);
+        if (path.StartsWith("BepInEx/plugins/spt/", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        const string patchers = "BepInEx/patchers/";
+        return path.StartsWith(patchers, StringComparison.OrdinalIgnoreCase)
+               && !path[patchers.Length..].Contains('/')
+               && Path.GetFileName(path).StartsWith("spt-", StringComparison.OrdinalIgnoreCase)
+               && path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase);
+    }
+
     public static IReadOnlyList<LocalModComponent> Scan(SptInstallation install)
     {
         var components = new List<LocalModComponent>();
@@ -46,6 +65,11 @@ public static class ModScanner
         // Loose DLLs at the folder root: each DLL is its own component.
         foreach (var dll in Directory.EnumerateFiles(folder, "*.dll", SearchOption.TopDirectoryOnly))
         {
+            if (IsSptCoreFile(PathUtil.ToRelative(install.RootPath, dll)))
+            {
+                continue;
+            }
+
             var component = ReadClientDll(install, dll, kind, [dll]);
             if (component is not null)
             {

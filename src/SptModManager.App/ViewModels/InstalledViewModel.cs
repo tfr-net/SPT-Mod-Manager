@@ -314,8 +314,8 @@ public partial class InstalledViewModel(MainViewModel main) : ViewModelBase
         }
 
         await ModListService.SaveAsync(list, stream);
-        var skipped = manager.Mods.Count(m => m.ForgeModId is null && m.Guid is null);
-        main.Log.Success($"Exported {list.Mods.Count} mod(s).{(skipped > 0 ? $" {skipped} unrecognized item(s) were left out." : string.Empty)}");
+        var skipped = manager.Mods.Count(m => m.ForgeModId is null);
+        main.Log.Success($"Exported {list.Mods.Count} mod(s).{(skipped > 0 ? $" {skipped} item(s) not on The Forge were left out, since there is nothing to download for them." : string.Empty)}");
     }
 
     [RelayCommand]

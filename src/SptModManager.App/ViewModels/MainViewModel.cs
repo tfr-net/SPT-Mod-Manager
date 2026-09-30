@@ -237,6 +237,12 @@ public partial class MainViewModel : ViewModelBase
             Log.Warn("Cancelled.");
             return false;
         }
+        catch (PlanExecutionException e) when (showErrors)
+        {
+            // The individual failures were already logged as they happened.
+            await Services.Dialogs.ShowMessageAsync("Some mods could not be installed", e.Message);
+            return false;
+        }
         catch (Exception e)
         {
             if (showErrors)

@@ -62,7 +62,7 @@ public partial class InstalledModViewModel(InstalledMod mod) : ViewModelBase
         ModUpdateStatus.UpToDate => "Up to date",
         ModUpdateStatus.UpdateAvailable => $"Update: v{Update.LatestVersion}",
         ModUpdateStatus.Blocked => $"v{Update.LatestVersion} held back",
-        ModUpdateStatus.IncompatibleWithSpt => "Not for your SPT",
+        ModUpdateStatus.IncompatibleWithSpt => Update.RequiredSptVersion is { } needed ? $"Needs SPT {needed}+" : "Not for your SPT",
         ModUpdateStatus.UnknownVersion => Update.LatestVersion is { } latest ? $"Latest: v{latest}" : "Unknown version",
         ModUpdateStatus.NotOnForge => IsUnrecognized ? "Unrecognized" : "Not on The Forge",
         _ => "Not checked",

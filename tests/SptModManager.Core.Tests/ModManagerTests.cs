@@ -415,4 +415,98 @@ public class ModManagerTests
         Assert.Equal(upToDate, ModManager.MergeUpdateInfo(incompatible, upToDate));
         Assert.Equal(upToDate, ModManager.MergeUpdateInfo(upToDate, incompatible));
     }
+    [Theory]
+    [InlineData("BepInEx/patchers/spt-prepatch.dll", true)]
+    [InlineData("BepInEx/plugins/spt/spt-core.dll", true)]
+    [InlineData("BepInEx/patchers/SomeModPatcher.dll", false)]
+    [InlineData("BepInEx/patchers/sub/spt-thing.dll", false)]
+    [InlineData("BepInEx/plugins/spt-lookalike.dll", false)]
+    public void IsSptCoreFile_RecognizesSptsOwnFiles(string path, bool expected)
+    {
+        Assert.Equal(expected, ModScanner.IsSptCoreFile(path));
+    }
+
+    [Fact]
+    public async Task RefreshAsync_DoesNotListSptsOwnPatcher()
+    {
+        using var test = new TestInstall();
+        test.CopyFixture("FakeClientPlugin.dll", "BepInEx/patchers/spt-prepatch.dll");
+        test.CopyFixture("FakeClientPlugin.dll", "BepInEx/patchers/RealPatcher.dll");
+
+        // An earlier version of the manager recorded the SPT patcher as a mod; it should be cleared.
+        new InstalledModsStore(test.Detect()).Save(new InstalledModsState
+        {
+            Mods = [new InstalledMod { Name = "spt-prepatch", Version = "4.1.6", Source = InstallSource.Detected, Files = ["BepInEx/patchers/spt-prepatch.dll"] }],
+        });
+
+        var manager = CreateManager(test, new FakeForge());
+        await manager.RefreshAsync(matchWithForge: false);
+
+        Assert.DoesNotContain(manager.Mods, m => m.Files.Contains("BepInEx/patchers/spt-prepatch.dll"));
+        Assert.Contains(manager.Mods, m => m.Files.Contains("BepInEx/patchers/RealPatcher.dll"));
+    }
+
+    [Fact]
+    public async Task ExecutePlanAsync_KeepsGoingWhenOneDownloadFails()
+    {
+        using var test = new TestInstall();
+        var downloader = new FakeDownloader();
+        downloader.Files["https://dl/ok"] = test.CreateZip("ok.zip", ("BepInEx/plugins/Ok.dll", "ok"));
+        downloader.Files["https://dl/needs-broken"] = test.CreateZip("needs.zip", ("BepInEx/plugins/Needs.dll", "needs"));
+        var log = new RecordingLog();
+        var manager = CreateManager(test, new FakeForge(), downloader, log);
+
+        var plan = new InstallPlan();
+        plan.Steps.Add(Step(1, "Broken", "1.0.0", "https://dl/404"));          // no such download
+        plan.Steps.Add(Step(2, "Needs Broken", "1.0.0", "https://dl/needs-broken", false, 1));
+        plan.Steps.Add(Step(3, "Fine", "1.0.0", "https://dl/ok"));
+
+        var error = await Assert.ThrowsAsync<PlanExecutionException>(() => manager.ExecutePlanAsync(plan));
+
+        Assert.Equal(2, error.Failures.Count);
+        Assert.Contains(error.Failures, f => f.StartsWith("Broken:"));
+        Assert.Contains(error.Failures, f => f.Contains("skipped because Broken failed"));
+        Assert.StartsWith("1 of 3 mod(s) installed", error.Message);
+        Assert.True(File.Exists(test.PathOf("BepInEx/plugins/Ok.dll")));
+        Assert.False(File.Exists(test.PathOf("BepInEx/plugins/Needs.dll")));
+        Assert.NotNull(manager.FindByForgeId(3));
+    }
+
+    [Fact]
+    public async Task CheckForUpdatesAsync_ExplainsWhichSptAnIncompatibleModNeeds()
+    {
+        using var test = new TestInstall(); // SPT 4.1.6
+        new InstalledModsStore(test.Detect()).Save(new InstalledModsState
+        {
+            Mods =
+            [
+                new InstalledMod { ForgeModId = 70, Name = "Made For Later Patch", Version = "2.0.2", Files = ["a"] },
+                new InstalledMod { ForgeModId = 80, Name = "Made For 4.0", Version = "1.0.0", Files = ["b"] },
+            ],
+        });
+
+        var forge = new FakeForge
+        {
+            UpdateHandler = (pairs, spt) =>
+            {
+                var check = new ForgeUpdateCheck { SptVersion = spt };
+                check.IncompatibleWithSpt.AddRange(pairs.Select(p => new ForgeUpdateModRef { ModId = int.Parse(p.Identifier), Version = p.Version }));
+                return check;
+            },
+        };
+        forge.Versions[70] = [new ForgeModVersion { Id = 702, Version = "2.0.2", SptVersionConstraint = "4.1.8" }];
+        forge.Versions[80] = [new ForgeModVersion { Id = 801, Version = "1.0.0", SptVersionConstraint = ">=4.0.0 <4.1.0" }];
+
+        var results = await CreateManager(test, forge).CheckForUpdatesAsync();
+
+        var later = results["forge:70"];
+        Assert.Equal(ModUpdateStatus.IncompatibleWithSpt, later.Status);
+        Assert.Equal("4.1.8", later.RequiredSptVersion);
+        Assert.Contains("made for SPT 4.1.8, and you have SPT 4.1.6", later.Reason);
+        Assert.Contains("Updating SPT to 4.1.8", later.Reason);
+
+        var old = results["forge:80"];
+        Assert.Null(old.RequiredSptVersion);
+        Assert.Contains("made for SPT >=4.0.0 <4.1.0", old.Reason);
+    }
 }

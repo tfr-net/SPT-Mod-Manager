@@ -51,8 +51,9 @@ public static class ModListService
     };
 
     /// <summary>
-    /// Builds a mod list from installed mods. Mods pulled in only as dependencies are left out, because importing
-    /// resolves dependencies again for the importer's SPT version.
+    /// Builds a mod list from installed mods. Only mods on The Forge are included, since anything else (side DLLs
+    /// bundled with another mod, hand-made tweaks) has no download for an importer to fetch. Mods pulled in only as
+    /// dependencies are left out too, because importing resolves dependencies again for the importer's SPT version.
     /// </summary>
     public static ModListFile Create(IEnumerable<InstalledMod> mods, string? sptVersion, string? name = null, bool includeDependencies = false)
     {
@@ -63,7 +64,7 @@ public static class ModListService
             SptVersion = sptVersion,
             Mods = mods
                 .Where(m => includeDependencies || !m.InstalledAsDependency)
-                .Where(m => m.ForgeModId is not null || m.Guid is not null)
+                .Where(m => m.ForgeModId is not null)
                 .OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(m => new ModListEntry
                 {
